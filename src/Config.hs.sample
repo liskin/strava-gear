@@ -1,0 +1,4 @@
+module Config where
+
+clientId = 12345
+clientSecret = "..."
