@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -60,17 +61,22 @@ syncBikes bikes = do
     forM_ bikes $ \bike -> do
         let bId = S.id `S.get` bike
             bName = S.name `S.get` bike
-            bRec = Bike bId bName
-        insertBy bRec >>= \case
-            Left dup -> do
-                when (entityVal dup /= bRec) $ do
-                    Nothing <- replaceUnique (entityKey dup) bRec
-                    -- TODO: mark as changed
-                    return ()
-            Right _key ->
-                -- TODO: mark as added
-                return ()
+        uprepsert $ Bike bId bName
     -- TODO: delete removed bikes
+
+uprepsert :: (Eq rec, Eq (Unique rec),
+           PersistEntity rec, PersistEntityBackend rec ~ SqlBackend)
+          => rec -> SqlPersistM ()
+uprepsert rec =
+    insertBy rec >>= \case
+        Left dup -> do
+            when (entityVal dup /= rec) $ do
+                Nothing <- replaceUnique (entityKey dup) rec
+                -- TODO: mark as changed
+                return ()
+        Right _key ->
+            -- TODO: mark as added
+            return ()
 
 syncActivities :: S.Client -> SqlPersistM ()
 syncActivities client = do
