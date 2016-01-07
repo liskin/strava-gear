@@ -11,10 +11,12 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE ViewPatterns #-}
 {-# OPTIONS_GHC -Wall #-}
 
 module Strava where
 
+import Control.Applicative
 import Control.Exception
 import Control.Monad.IO.Class (liftIO)
 import Data.Function (on)
@@ -216,17 +218,28 @@ parseConf l = case T.words l of
     err ->
         error $ show err
 
--- TODO: hours/days
 parseDuration :: T.Text -> Int
+parseDuration (T.stripSuffix "h" -> Just t) = parseDuration t * 3600
+parseDuration (T.stripSuffix "d" -> Just t) = parseDuration t * 86400
 parseDuration t = read $ T.unpack t
 
--- TODO: km
 parseDist :: T.Text -> Double
+parseDist (T.stripSuffix "km" -> Just t) = parseDist t * 1000
 parseDist t = read $ T.unpack t
 
 parseUTCTime :: T.Text -> UTCTime
 parseUTCTime t =
-    parseTimeM False defaultTimeLocale (iso8601DateFormat Nothing) (T.unpack t) ()
+    maybe (error $ "parseUTCTime " ++ T.unpack t) id $ parseUTCTime' t
+
+parseUTCTime' :: T.Text -> Maybe UTCTime
+parseUTCTime' t =
+    parse (iso8601DateFormat Nothing) <|>
+    parse (iso8601DateFormat (Just "%H:%M:%S")) <|>
+    parse (iso8601DateFormat (Just "%H:%M:%SZ")) <|>
+    parse (iso8601DateFormat (Just "%H:%M:%S%z")) <|>
+    empty
+    where
+        parse f = parseTimeM False defaultTimeLocale f (T.unpack t)
 
 
 -- Helpers --
