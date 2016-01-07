@@ -21,6 +21,7 @@ executable strava-gear-exe
                      , containers
                      , text
                      , time
+                     , split
                      , strive
                      , persistent
                      , persistent-template

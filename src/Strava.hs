@@ -21,6 +21,7 @@ import Control.Exception
 import Control.Monad.IO.Class (liftIO)
 import Data.Function (on)
 import Data.List ((\\), nubBy)
+import Data.List.Split (chunksOf)
 import Data.Time
 import Database.Persist
 import Database.Persist.Sqlite
@@ -309,7 +310,8 @@ wipeInsertMany :: forall rec.
                   => [rec] -> SqlPersistM ()
 wipeInsertMany recs = do
     deleteWhere ([] :: [Filter rec])
-    insertMany_ recs
+    -- FIXME: https://github.com/yesodweb/persistent/issues/527
+    mapM_ insertMany_ (chunksOf 100 recs)
 
 (!) :: (Ord k, Show k, Show a) => Map.Map k a -> k -> a
 m ! v = unsafePerformIO $ try (evaluate (m Map.! v)) >>= \case
