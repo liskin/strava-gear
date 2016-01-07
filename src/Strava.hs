@@ -8,12 +8,13 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -Wall #-}
 
 module Strava where
 
-import Control.Monad
 import Control.Monad.IO.Class (liftIO)
+import Data.List ((\\))
 import Data.Time
 import Database.Persist
 import Database.Persist.Sqlite
@@ -53,30 +54,63 @@ sync client = do
     print fileName
     runSqlite (T.pack fileName) $ do
         runMigration migrateAll
-        syncBikes athleteBikes
-        syncActivities client
+        syncBikesRes <- syncBikes athleteBikes
+        liftIO $ print syncBikesRes
+        --syncActivities client
+        return ()
 
-syncBikes :: [S.GearSummary] -> SqlPersistM ()
-syncBikes bikes = do
-    forM_ bikes $ \bike -> do
-        let bId = S.id `S.get` bike
-            bName = S.name `S.get` bike
-        uprepsert $ Bike bId bName
-    -- TODO: delete removed bikes
+syncBikes :: [S.GearSummary] -> SqlPersistM [UpsertResult Bike]
+syncBikes bikes = syncEntitiesDel $ map bike bikes
+    where bike b = Bike (S.id `S.get` b) (S.name `S.get` b)
+
+data UpsertResult rec
+    = UpsertAdded (Key rec)
+    | UpsertDeleted (Key rec)
+    | UpsertUpdated (Key rec)
+    | UpsertNoop (Key rec)
+
+deriving instance Show (Key rec) => Show (UpsertResult rec)
 
 uprepsert :: (Eq rec, Eq (Unique rec),
            PersistEntity rec, PersistEntityBackend rec ~ SqlBackend)
-          => rec -> SqlPersistM ()
+          => rec -> SqlPersistM (UpsertResult rec)
 uprepsert rec =
     insertBy rec >>= \case
         Left dup -> do
-            when (entityVal dup /= rec) $ do
-                Nothing <- replaceUnique (entityKey dup) rec
-                -- TODO: mark as changed
-                return ()
-        Right _key ->
-            -- TODO: mark as added
-            return ()
+            if entityVal dup /= rec
+                then do
+                    Nothing <- replaceUnique (entityKey dup) rec
+                    return $ UpsertUpdated (entityKey dup)
+                else
+                    return $ UpsertNoop (entityKey dup)
+        Right key ->
+            return $ UpsertAdded key
+
+delEntities :: (Eq rec, Eq (Unique rec),
+                PersistEntity rec, PersistEntityBackend rec ~ SqlBackend)
+               => [UpsertResult rec] -> SqlPersistM [UpsertResult rec]
+delEntities res = do
+    allKeys <- selectKeysList [] []
+    let keepKeys = flip concatMap res $ \case
+            UpsertAdded   k -> [k]
+            UpsertDeleted _ -> []
+            UpsertUpdated k -> [k]
+            UpsertNoop    k -> [k]
+        delKeys = allKeys \\ keepKeys
+    mapM (\k -> delete k >> return (UpsertDeleted k)) delKeys
+
+syncEntities :: (Eq rec, Eq (Unique rec),
+                 PersistEntity rec, PersistEntityBackend rec ~ SqlBackend)
+                => [rec] -> SqlPersistM [UpsertResult rec]
+syncEntities = mapM uprepsert
+
+syncEntitiesDel :: (Eq rec, Eq (Unique rec),
+                    PersistEntity rec, PersistEntityBackend rec ~ SqlBackend)
+                   => [rec] -> SqlPersistM [UpsertResult rec]
+syncEntitiesDel recs = do
+    syncRes <- syncEntities recs
+    delRes <- delEntities syncRes
+    return $ syncRes ++ delRes
 
 syncActivities :: S.Client -> SqlPersistM ()
 syncActivities client = do
