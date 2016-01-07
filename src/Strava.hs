@@ -27,11 +27,15 @@ import Database.Persist
 import Database.Persist.Sqlite
 import Database.Persist.TH
 import System.IO.Unsafe (unsafePerformIO)
+import Text.Printf (printf)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
+import qualified Database.Esqueleto as E
 import qualified Strive as S
+import qualified Text.Tabular as Tab
+import qualified Text.Tabular.AsciiArt as Tab
 
 import Config
 
@@ -93,6 +97,8 @@ deriving instance Eq (Unique Activity)
 
 testClient :: IO S.Client
 testClient = S.buildClient (Just $ T.pack token)
+
+-- Sync --
 
 sync :: S.Client -> IO ()
 sync client = do
@@ -192,6 +198,40 @@ activityHashtagComponents (Entity k act) = do
 actHashTags :: Activity -> [T.Text]
 actHashTags Activity{activityName = name} =
     [ w | w <- T.words name, "#" `T.isPrefixOf` w ]
+
+
+-- Report --
+
+report :: T.Text -> IO ()
+report fileName = do
+    runSqlite fileName $ do
+        tab <- componentReport
+        liftIO $ putStr $ Tab.render id id id tab
+        return ()
+
+componentReport :: SqlPersistM (Tab.Table String String String)
+componentReport = do
+    res <- E.select $
+        E.from $ \(c `E.InnerJoin` ac `E.InnerJoin` a `E.InnerJoin` r) -> do
+            E.on (c E.^. ComponentId E.==. ac E.^. ActivityComponentComponent)
+            E.on (ac E.^. ActivityComponentActivity E.==. a E.^. ActivityId)
+            E.on (ac E.^. ActivityComponentRole E.==. r E.^. ComponentRoleId)
+            E.groupBy (c E.^. ComponentId)
+            E.orderBy
+                [ E.asc $ r E.^. ComponentRoleName
+                , E.asc $ c E.^. ComponentUniqueId ]
+            return (r, c, E.sum_ $ a E.^. ActivityMovingTime,
+                E.sum_ $ a E.^. ActivityDistance)
+    let ids = [ T.unpack $ componentRoleName r | (Entity _ r, _, _, _) <- res ]
+        rh = Tab.Group Tab.NoLine (map Tab.Header ids)
+        ch = Tab.Group Tab.SingleLine
+            [ Tab.Group Tab.DoubleLine [Tab.Header "id", Tab.Header "name"]
+            , Tab.Header "time", Tab.Header "distance" ]
+        tab = [ [T.unpack $ componentUniqueId c, T.unpack $ componentName c, niceTime, niceDist]
+              | (_, Entity _ c, E.Value (Just time), E.Value (Just dist)) <- res
+              , let niceTime = printf "%.1f" ((time :: Double) / 3600) ++ " hours"
+              , let niceDist = printf "%.0f" ((dist :: Double) / 1000) ++ " km" ]
+    return $ Tab.Table rh ch tab
 
 
 -- Text config (to be replaced by REST) --
