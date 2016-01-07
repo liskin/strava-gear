@@ -15,12 +15,15 @@
 
 module Strava where
 
+import Control.Exception
 import Control.Monad.IO.Class (liftIO)
-import Data.List ((\\))
+import Data.Function (on)
+import Data.List ((\\), nubBy)
 import Data.Time
 import Database.Persist
 import Database.Persist.Sqlite
 import Database.Persist.TH
+import System.IO.Unsafe (unsafePerformIO)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.Text as T
@@ -39,8 +42,21 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistUpperCase|
         uniqueId T.Text
         UniqueId uniqueId
         name T.Text
-        initialMeters Int
-        initialSeconds Int
+        initialSeconds Int -- seconds
+        initialMeters Double -- meters
+        deriving Eq Ord Show
+
+    ComponentRole
+        name T.Text
+        UniqueName name
+        deriving Eq Ord Show
+
+    LongtermBikeComponent
+        component ComponentId
+        bike BikeId
+        role ComponentRoleId
+        startTime UTCTime
+        endTime UTCTime Maybe
         deriving Eq Ord Show
 
     Activity
@@ -53,26 +69,29 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistUpperCase|
         gearId T.Text Maybe
         deriving Eq Ord Show
 
-    HashTag
-        tag T.Text
-        UniqueHashTag tag
+    ActivityComponent
+        activity ActivityId
+        component ComponentId
+        role ComponentRoleId
         deriving Eq Ord Show
 
-    ActivityHashTag
-        activity ActivityId
-        hashTag HashTagId
+    HashTagBikeComponent
+        tag T.Text
+        component ComponentId
+        role ComponentRoleId
         deriving Eq Ord Show
 |]
 
 deriving instance Eq (Unique Bike)
+deriving instance Eq (Unique Component)
+deriving instance Eq (Unique ComponentRole)
 deriving instance Eq (Unique Activity)
-deriving instance Eq (Unique HashTag)
 
 testClient :: IO S.Client
 testClient = S.buildClient (Just $ T.pack token)
 
-sync :: S.Client -> IO ()
-sync client = do
+sync :: T.Text -> S.Client -> IO ()
+sync conf client = do
     Right athlete <- S.getCurrentAthlete client
     let athleteId = S.id `S.get` athlete :: Integer
         athleteBikes = S.bikes `S.get` athlete
@@ -80,16 +99,15 @@ sync client = do
     print fileName
     runSqlite (T.pack fileName) $ do
         runMigration migrateAll
-        syncBikesRes <- syncBikes athleteBikes
-        syncActivitiesRes <- syncActivities client
-        syncHashTags
-        liftIO $ print syncBikesRes
-        liftIO $ print syncActivitiesRes
+        _syncBikesRes <- syncBikes athleteBikes
+        _syncActivitiesRes <- syncActivities client
+        syncConfig conf
+        syncActivitiesComponents
         return ()
 
 syncBikes :: [S.GearSummary] -> SqlPersistM [UpsertResult Bike]
 syncBikes bikes = syncEntitiesDel $ map bike bikes
-    where bike b = Bike (S.id `S.get` b) (S.name `S.get` b)
+    where bike b = Bike (S.name `S.get` b) (S.id `S.get` b)
 
 syncActivities :: S.Client -> SqlPersistM [UpsertResult Activity]
 syncActivities client = do
@@ -108,21 +126,110 @@ syncActivities client = do
             , activityGearId = S.gearId `S.get` a
             }
 
-syncHashTags :: SqlPersistM ()
-syncHashTags = do
-    acts <- selectList [] []
-    let actTags = [ (entityKey e, actHashTags $ entityVal e) | e <- acts ]
-        allTags = distinct $ concatMap snd actTags
-    tagsRes <- syncEntitiesDel allTags
-    let tagMap = Map.fromList [ (entityVal e, entityKey e)
-                              | e <- keptEntities tagsRes ]
-    -- FIXME: maybe don't wipe but just update? (perhaps not worth the effort)
-    wipeInsertMany
-        [ ActivityHashTag k (tagMap Map.! t) | (k, ts) <- actTags, t <- ts ]
-
-actHashTags :: Activity -> [HashTag]
+actHashTags :: Activity -> [T.Text]
 actHashTags Activity{activityName = name} =
-    [ HashTag w | w <- T.words name, "#" `T.isPrefixOf` w ]
+    [ w | w <- T.words name, "#" `T.isPrefixOf` w ]
+
+syncActivitiesComponents :: SqlPersistM ()
+syncActivitiesComponents = do
+    acts <- selectList [ActivityGearId !=. Nothing] []
+    actComponents <- mapM syncActivityComponents acts
+    wipeInsertMany $ concat actComponents
+
+syncActivityComponents :: Entity Activity -> SqlPersistM [ActivityComponent]
+syncActivityComponents act = do
+    longterms <- activityLongtermComponents act
+    fromtags <- activityHashtagComponents act
+    return $ nubBy ((==) `on` activityComponentRole) $ fromtags ++ longterms
+
+activityLongtermComponents :: Entity Activity -> SqlPersistM [ActivityComponent]
+activityLongtermComponents (Entity k act) = do
+    let gearId = maybe (error "no gear id") id $ activityGearId act
+    Just bike <- getBy $ StravaBikeId gearId
+    let longtermFilter =
+            [ LongtermBikeComponentBike ==. entityKey bike
+            , LongtermBikeComponentStartTime <=. activityStartTime act
+            ] ++
+            ([ LongtermBikeComponentEndTime >=. Just (activityStartTime act) ] ||.
+             [ LongtermBikeComponentEndTime ==. Nothing ])
+    longterms <- selectList longtermFilter []
+    return [ ActivityComponent k
+             (longtermBikeComponentComponent l)
+             (longtermBikeComponentRole l)
+           | Entity _ l <- longterms ]
+
+activityHashtagComponents :: Entity Activity -> SqlPersistM [ActivityComponent]
+activityHashtagComponents (Entity k act) = do
+    let hashtagFilter = [ HashTagBikeComponentTag <-. actHashTags act ]
+    fromtags <- selectList hashtagFilter []
+    return [ ActivityComponent k
+             (hashTagBikeComponentComponent h)
+             (hashTagBikeComponentRole h)
+           | Entity _ h <- fromtags ]
+
+
+-- Text config (to be replaced by REST) --
+
+syncConfig :: T.Text -> SqlPersistM ()
+syncConfig conf = do
+    let ls = T.lines conf
+        cs = concatMap parseConf ls
+    components <- fmap keptEntities $ syncEntitiesDel
+        [ Component c n dur dist | ConfComponent c n dur dist <- cs ]
+    roles <- fmap keptEntities $ syncEntitiesDel
+        [ ComponentRole n | ConfRole n <- cs ]
+    bikes <- selectList [] []
+    let componentMap = Map.fromList
+            [ (componentUniqueId v, k) | Entity k v <- components ]
+        roleMap = Map.fromList
+            [ (componentRoleName v, k) | Entity k v <- roles ]
+        bikeMap = Map.fromList
+            [ (bikeStravaId v, k) | Entity k v <- bikes ]
+    wipeInsertMany
+        [ LongtermBikeComponent (componentMap ! c)
+                                (bikeMap ! b) (roleMap ! r) s e
+        | ConfLongterm c b r s e <- cs ]
+    wipeInsertMany
+        [ HashTagBikeComponent t (componentMap ! c) (roleMap ! r)
+        | ConfHashTag t c r <- cs ]
+
+data Conf
+    = ConfComponent T.Text T.Text Int Double
+    | ConfRole T.Text
+    | ConfLongterm T.Text T.Text T.Text UTCTime (Maybe UTCTime)
+    | ConfHashTag T.Text T.Text T.Text
+
+parseConf :: T.Text -> [Conf]
+parseConf l = case T.words l of
+    [] -> []
+    ["component", code, name, iniDur, iniDist] ->
+        [ConfComponent code name (parseDuration iniDur) (parseDist iniDist)]
+    ["role", name] ->
+        [ConfRole name]
+    ["longterm", component, bike, role, start, end] ->
+        [ConfLongterm component bike role (parseUTCTime start)
+                                          (Just $ parseUTCTime end)]
+    ["longterm", component, bike, role, start] ->
+        [ConfLongterm component bike role (parseUTCTime start) Nothing]
+    ["hashtag", tag, component, role] ->
+        [ConfHashTag tag component role]
+    err ->
+        error $ show err
+
+-- TODO: hours/days
+parseDuration :: T.Text -> Int
+parseDuration t = read $ T.unpack t
+
+-- TODO: km
+parseDist :: T.Text -> Double
+parseDist t = read $ T.unpack t
+
+parseUTCTime :: T.Text -> UTCTime
+parseUTCTime t =
+    parseTimeM False defaultTimeLocale (iso8601DateFormat Nothing) (T.unpack t) ()
+
+
+-- Helpers --
 
 distinct :: (Ord a) => [a] -> [a]
 distinct = Set.toList . Set.fromList
@@ -186,3 +293,9 @@ wipeInsertMany :: forall rec.
 wipeInsertMany recs = do
     deleteWhere ([] :: [Filter rec])
     insertMany_ recs
+
+(!) :: (Ord k, Show k, Show a) => Map.Map k a -> k -> a
+m ! v = unsafePerformIO $ try (evaluate (m Map.! v)) >>= \case
+    Right x -> return x
+    Left (e :: SomeException) ->
+        error $ show m ++ " ! " ++ show v ++ ": " ++ show e
