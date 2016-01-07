@@ -284,7 +284,7 @@ data UpsertResult rec
 deriving instance (Show (Entity rec), Show (Key rec)) => Show (UpsertResult rec)
 
 uprepsert :: (Eq rec, Eq (Unique rec),
-           PersistEntity rec, PersistEntityBackend rec ~ SqlBackend)
+              PersistEntity rec, PersistEntityBackend rec ~ SqlBackend)
           => rec -> SqlPersistM (UpsertResult rec)
 uprepsert rec =
     insertBy rec >>= \case
@@ -299,7 +299,7 @@ uprepsert rec =
             return $ UpsertAdded $ Entity key rec
 
 delEntities :: (PersistEntity rec, PersistEntityBackend rec ~ SqlBackend)
-               => [UpsertResult rec] -> SqlPersistM [UpsertResult rec]
+            => [UpsertResult rec] -> SqlPersistM [UpsertResult rec]
 delEntities res = do
     allKeys <- selectKeysList [] []
     let delKeys = allKeys \\ map entityKey (keptEntities res)
@@ -314,12 +314,12 @@ keptEntities = concatMap $ \case
 
 syncEntities :: (Eq rec, Eq (Unique rec),
                  PersistEntity rec, PersistEntityBackend rec ~ SqlBackend)
-                => [rec] -> SqlPersistM [UpsertResult rec]
+             => [rec] -> SqlPersistM [UpsertResult rec]
 syncEntities = mapM uprepsert
 
 syncEntitiesDel :: (Eq rec, Eq (Unique rec),
                     PersistEntity rec, PersistEntityBackend rec ~ SqlBackend)
-                   => [rec] -> SqlPersistM [UpsertResult rec]
+                => [rec] -> SqlPersistM [UpsertResult rec]
 syncEntitiesDel recs = do
     syncRes <- syncEntities recs
     delRes <- delEntities syncRes
@@ -327,7 +327,7 @@ syncEntitiesDel recs = do
 
 wipeInsertMany :: forall rec.
                   (PersistEntity rec, PersistEntityBackend rec ~ SqlBackend)
-                  => [rec] -> SqlPersistM ()
+               => [rec] -> SqlPersistM ()
 wipeInsertMany recs = do
     deleteWhere ([] :: [Filter rec])
     -- FIXME: https://github.com/yesodweb/persistent/issues/527
