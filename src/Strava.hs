@@ -100,14 +100,13 @@ testClient = S.buildClient (Just $ T.pack token)
 
 -- Sync --
 
-sync :: S.Client -> IO ()
+sync :: S.Client -> IO T.Text
 sync client = do
     Right athlete <- S.getCurrentAthlete client
     let athleteId = S.id `S.get` athlete :: Integer
         athleteBikes = S.bikes `S.get` athlete
         sqliteFileName = "athlete_" ++ show athleteId ++ ".sqlite"
         confFileName = "athlete_" ++ show athleteId ++ ".conf"
-    print sqliteFileName
     conf <- T.readFile confFileName
     runSqlite (T.pack sqliteFileName) $ do
         runMigration migrateAll
@@ -115,8 +114,9 @@ sync client = do
         _ <- syncActivities client -- FIXME: not always
         transactionSave
         syncConfig conf
+        transactionSave
         syncActivitiesComponents
-        return ()
+    return $ T.pack sqliteFileName
 
 syncBikes :: [S.GearSummary] -> SqlPersistM [UpsertResult Bike]
 syncBikes bikes = syncEntitiesDel $ map bike bikes
