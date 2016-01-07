@@ -174,7 +174,7 @@ activityLongtermComponents bike (Entity k act) = do
             ] ++
             ([ LongtermBikeComponentEndTime >=. Just (activityStartTime act) ] ||.
              [ LongtermBikeComponentEndTime ==. Nothing ])
-    longterms <- selectList longtermFilter []
+    longterms <- selectList longtermFilter [Desc LongtermBikeComponentStartTime]
     return [ ActivityComponent k
              (longtermBikeComponentComponent l)
              (longtermBikeComponentRole l)
