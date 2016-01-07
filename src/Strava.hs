@@ -225,17 +225,28 @@ componentReport = do
                 iniDist = E.just $ c E.^. ComponentInitialMeters
                 sumMovingTime = E.sum_ $ a E.^. ActivityMovingTime
                 sumDist = E.sum_ $ a E.^. ActivityDistance
+                firstUsage = E.min_ $ a E.^. ActivityStartTime
+                lastUsage = E.max_ $ a E.^. ActivityStartTime
             return
                 ( r, c
                 , iniTime E.+. sumMovingTime
-                , iniDist E.+. sumDist )
-    let ids = [ T.unpack $ componentRoleName r | (Entity _ r, _, _, _) <- res ]
+                , iniDist E.+. sumDist
+                , firstUsage, lastUsage )
+    let ids = [ T.unpack $ componentRoleName r
+              | (Entity _ r, _, _, _, _, _) <- res ]
         rh = Tab.Group Tab.NoLine (map Tab.Header ids)
-        ch = Tab.Group Tab.SingleLine
-            [ Tab.Group Tab.DoubleLine [Tab.Header "id", Tab.Header "name"]
-            , Tab.Header "time", Tab.Header "distance" ]
-        tab = [ [T.unpack $ componentUniqueId c, T.unpack $ componentName c, niceTime, niceDist]
-              | (_, Entity _ c, E.Value (Just time), E.Value (Just dist)) <- res
+        ch = Tab.Group Tab.DoubleLine
+            [ Tab.Group Tab.SingleLine [Tab.Header "id", Tab.Header "name"]
+            , Tab.Group Tab.SingleLine [Tab.Header "first", Tab.Header "last"]
+            , Tab.Group Tab.SingleLine [Tab.Header "time", Tab.Header "distance"]
+            ]
+        timeFormat = formatTime defaultTimeLocale "%F"
+        tab = [ [ T.unpack $ componentUniqueId c, T.unpack $ componentName c
+                , timeFormat firstUsage, timeFormat lastUsage, niceTime, niceDist ]
+              | ( _, Entity _ c
+                , E.Value (Just time), E.Value (Just dist)
+                , E.Value (Just firstUsage), E.Value (Just lastUsage)
+                ) <- res
               , let niceTime = printf "%.1f" ((fromIntegral time :: Double) / 3600) ++ " hours"
               , let niceDist = printf "%.0f" ((dist :: Double) / 1000) ++ " km" ]
     return $ Tab.Table rh ch tab
