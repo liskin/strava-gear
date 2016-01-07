@@ -95,10 +95,11 @@ deriving instance Eq (Unique Component)
 deriving instance Eq (Unique ComponentRole)
 deriving instance Eq (Unique Activity)
 
-testClient :: IO S.Client
-testClient = S.buildClient (Just $ T.pack token)
 
 -- Sync --
+
+testClient :: IO S.Client
+testClient = S.buildClient (Just $ T.pack token)
 
 sync :: S.Client -> IO T.Text
 sync client = do
