@@ -28,8 +28,8 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistUpperCase|
     Bike
         name T.Text
         stravaId T.Text
-        StravaId stravaId
-        deriving Eq Show
+        StravaBikeId stravaId
+        deriving Eq Ord Show
 
     Component
         uniqueId T.Text
@@ -37,10 +37,21 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistUpperCase|
         name T.Text
         initialMeters Int
         initialSeconds Int
-        deriving Eq Show
+        deriving Eq Ord Show
+
+    Activity
+        stravaId Int
+        StravaActivityId stravaId
+        name T.Text
+        startTime UTCTime
+        movingTime Int -- seconds
+        distance Double -- meters
+        gearId T.Text Maybe
+        deriving Eq Ord Show
 |]
 
 deriving instance Eq (Unique Bike)
+deriving instance Eq (Unique Activity)
 
 testClient :: IO S.Client
 testClient = S.buildClient (Just $ T.pack token)
@@ -55,13 +66,34 @@ sync client = do
     runSqlite (T.pack fileName) $ do
         runMigration migrateAll
         syncBikesRes <- syncBikes athleteBikes
+        syncActivitiesRes <- syncActivities client
         liftIO $ print syncBikesRes
-        --syncActivities client
+        liftIO $ print syncActivitiesRes
         return ()
 
 syncBikes :: [S.GearSummary] -> SqlPersistM [UpsertResult Bike]
 syncBikes bikes = syncEntitiesDel $ map bike bikes
     where bike b = Bike (S.id `S.get` b) (S.name `S.get` b)
+
+syncActivities :: S.Client -> SqlPersistM [UpsertResult Activity]
+syncActivities client = do
+    -- TODO: paging
+    now <- liftIO $ getCurrentTime
+    acts <- fromRightM $ liftIO $ S.getCurrentActivities client $
+        S.with [ S.before `S.set` Just now ]
+    syncEntitiesDel $ map act acts
+    where
+        act a = Activity
+            { activityStravaId = fromIntegral $ S.id `S.get` a
+            , activityName = S.name `S.get` a
+            , activityStartTime = S.startDate `S.get` a
+            , activityMovingTime = fromIntegral $ S.movingTime `S.get` a
+            , activityDistance = S.distance `S.get` a
+            , activityGearId = S.gearId `S.get` a
+            }
+
+fromRightM :: (Monad m, Show a) => m (Either a b) -> m b
+fromRightM = fmap (either (error . show) id)
 
 data UpsertResult rec
     = UpsertAdded (Key rec)
@@ -111,20 +143,3 @@ syncEntitiesDel recs = do
     syncRes <- syncEntities recs
     delRes <- delEntities syncRes
     return $ syncRes ++ delRes
-
-syncActivities :: S.Client -> SqlPersistM ()
-syncActivities client = do
-    getRes <- liftIO $ S.getCurrentActivities client $ S.with
-        [ S.set S.after (Just (UTCTime (fromGregorian 1970 0 0) 0))
-        , S.set S.perPage 201
-        ]
-        {-[ S.set S.before (Just (UTCTime (fromGregorian 1970 0 0) 0))
-        , S.set S.after (Just (UTCTime (fromGregorian 1970 0 0) 0))
-        , S.set S.page 1
-        , S.set S.perPage 2
-        ]-}
-    case getRes of
-        Right currentActivities ->
-            liftIO $ print $ length currentActivities
-        Left err ->
-            liftIO $ print err
