@@ -155,14 +155,19 @@ syncActivitiesComponents = do
 
 syncActivityComponents :: Entity Activity -> SqlPersistM [ActivityComponent]
 syncActivityComponents act = do
-    longterms <- activityLongtermComponents act
-    fromtags <- activityHashtagComponents act
-    return $ nubBy ((==) `on` activityComponentRole) $ fromtags ++ longterms
+    let gearId = maybe (error "no gear id") id $ activityGearId $ entityVal act
+    getBy (StravaBikeId gearId) >>= \case
+        Nothing ->
+            -- ignore retired bikes, we don't have them in database
+            return []
+        Just bike -> do
+            longterms <- activityLongtermComponents bike act
+            fromtags <- activityHashtagComponents act
+            return $ nubBy ((==) `on` activityComponentRole) $ fromtags ++ longterms
 
-activityLongtermComponents :: Entity Activity -> SqlPersistM [ActivityComponent]
-activityLongtermComponents (Entity k act) = do
-    let gearId = maybe (error "no gear id") id $ activityGearId act
-    Just bike <- getBy $ StravaBikeId gearId
+activityLongtermComponents :: Entity Bike -> Entity Activity
+                           -> SqlPersistM [ActivityComponent]
+activityLongtermComponents bike (Entity k act) = do
     let longtermFilter =
             [ LongtermBikeComponentBike ==. entityKey bike
             , LongtermBikeComponentStartTime <=. activityStartTime act
