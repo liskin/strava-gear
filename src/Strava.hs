@@ -29,6 +29,7 @@ import System.IO.Unsafe (unsafePerformIO)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.Text as T
+import qualified Data.Text.IO as T
 import qualified Strive as S
 
 import Config
@@ -92,14 +93,16 @@ deriving instance Eq (Unique Activity)
 testClient :: IO S.Client
 testClient = S.buildClient (Just $ T.pack token)
 
-sync :: T.Text -> S.Client -> IO ()
-sync conf client = do
+sync :: S.Client -> IO ()
+sync client = do
     Right athlete <- S.getCurrentAthlete client
     let athleteId = S.id `S.get` athlete :: Integer
         athleteBikes = S.bikes `S.get` athlete
-        fileName = "athlete_" ++ show athleteId ++ ".sqlite"
-    print fileName
-    runSqlite (T.pack fileName) $ do
+        sqliteFileName = "athlete_" ++ show athleteId ++ ".sqlite"
+        confFileName = "athlete_" ++ show athleteId ++ ".conf"
+    print sqliteFileName
+    conf <- T.readFile confFileName
+    runSqlite (T.pack sqliteFileName) $ do
         runMigration migrateAll
         _syncBikesRes <- syncBikes athleteBikes
         _syncActivitiesRes <- syncActivities client
@@ -203,6 +206,7 @@ data Conf
 
 parseConf :: T.Text -> [Conf]
 parseConf l = case T.words l of
+    comment:_ | "#" `T.isPrefixOf` comment -> []
     [] -> []
     ["component", code, name, iniDur, iniDist] ->
         [ConfComponent code name (parseDuration iniDur) (parseDist iniDist)]
