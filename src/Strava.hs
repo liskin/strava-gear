@@ -132,10 +132,6 @@ syncActivities client = do
             , activityGearId = S.gearId `S.get` a
             }
 
-actHashTags :: Activity -> [T.Text]
-actHashTags Activity{activityName = name} =
-    [ w | w <- T.words name, "#" `T.isPrefixOf` w ]
-
 syncActivitiesComponents :: SqlPersistM ()
 syncActivitiesComponents = do
     acts <- selectList [ActivityGearId !=. Nothing] []
@@ -172,6 +168,10 @@ activityHashtagComponents (Entity k act) = do
              (hashTagBikeComponentComponent h)
              (hashTagBikeComponentRole h)
            | Entity _ h <- fromtags ]
+
+actHashTags :: Activity -> [T.Text]
+actHashTags Activity{activityName = name} =
+    [ w | w <- T.words name, "#" `T.isPrefixOf` w ]
 
 
 -- Text config (to be replaced by REST) --
