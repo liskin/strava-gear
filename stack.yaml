@@ -2,9 +2,9 @@ resolver: lts-3.20
 flags: {}
 packages:
 - '.'
-- location: ../strive
-    #git: git://github.com/tfausak/strive.git
-    #commit: c39704d5f008af42f5c3c2d5319476c7aa12e52d
+- location:
+    git: git://github.com/tfausak/strive.git
+    commit: cfbd995dacafb1242482c0b6ce23826fad505338
   extra-dep: true
 extra-deps:
 - gpolyline-0.1.0.1
