@@ -105,8 +105,9 @@ sync client = do
     conf <- T.readFile confFileName
     runSqlite (T.pack sqliteFileName) $ do
         runMigration migrateAll
-        _syncBikesRes <- syncBikes athleteBikes
-        _syncActivitiesRes <- syncActivities client
+        _ <- syncBikes athleteBikes
+        _ <- syncActivities client -- FIXME: not always
+        transactionSave
         syncConfig conf
         syncActivitiesComponents
         return ()
@@ -115,12 +116,10 @@ syncBikes :: [S.GearSummary] -> SqlPersistM [UpsertResult Bike]
 syncBikes bikes = syncEntitiesDel $ map bike bikes
     where bike b = Bike (S.name `S.get` b) (S.id `S.get` b)
 
+-- TODO: avoid refetching all activities every time
 syncActivities :: S.Client -> SqlPersistM [UpsertResult Activity]
 syncActivities client = do
-    -- TODO: paging
-    now <- liftIO $ getCurrentTime
-    acts <- fromRightM $ liftIO $ S.getCurrentActivities client $
-        S.with [ S.before `S.set` Just now ]
+    acts <- fetchActivities client
     syncEntitiesDel $ map act acts
     where
         act a = Activity
@@ -131,6 +130,22 @@ syncActivities client = do
             , activityDistance = S.distance `S.get` a
             , activityGearId = S.gearId `S.get` a
             }
+
+fetchActivities :: S.Client -> SqlPersistM [S.ActivitySummary]
+fetchActivities client = do
+    now <- liftIO $ getCurrentTime
+    concat `fmap` go now
+    where
+        fetch t =
+            fromRightM $ liftIO $ S.getCurrentActivities client $
+                S.with [ S.before `S.set` Just t ]
+        go t = do
+            liftIO $ putStrLn $ "fetching activities before " ++ show t
+            acts <- fetch t
+            if null acts
+                then return [acts]
+                else fmap (acts :) $ go (S.startDate `S.get` last acts)
+
 
 syncActivitiesComponents :: SqlPersistM ()
 syncActivitiesComponents = do
