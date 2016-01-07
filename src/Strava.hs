@@ -4,7 +4,9 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -19,6 +21,8 @@ import Data.Time
 import Database.Persist
 import Database.Persist.Sqlite
 import Database.Persist.TH
+import qualified Data.Map as Map
+import qualified Data.Set as Set
 import qualified Data.Text as T
 import qualified Strive as S
 
@@ -48,10 +52,21 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistUpperCase|
         distance Double -- meters
         gearId T.Text Maybe
         deriving Eq Ord Show
+
+    HashTag
+        tag T.Text
+        UniqueHashTag tag
+        deriving Eq Ord Show
+
+    ActivityHashTag
+        activity ActivityId
+        hashTag HashTagId
+        deriving Eq Ord Show
 |]
 
 deriving instance Eq (Unique Bike)
 deriving instance Eq (Unique Activity)
+deriving instance Eq (Unique HashTag)
 
 testClient :: IO S.Client
 testClient = S.buildClient (Just $ T.pack token)
@@ -67,6 +82,7 @@ sync client = do
         runMigration migrateAll
         syncBikesRes <- syncBikes athleteBikes
         syncActivitiesRes <- syncActivities client
+        syncHashTags
         liftIO $ print syncBikesRes
         liftIO $ print syncActivitiesRes
         return ()
@@ -92,16 +108,35 @@ syncActivities client = do
             , activityGearId = S.gearId `S.get` a
             }
 
+syncHashTags :: SqlPersistM ()
+syncHashTags = do
+    acts <- selectList [] []
+    let actTags = [ (entityKey e, actHashTags $ entityVal e) | e <- acts ]
+        allTags = distinct $ concatMap snd actTags
+    tagsRes <- syncEntitiesDel allTags
+    let tagMap = Map.fromList [ (entityVal e, entityKey e)
+                              | e <- keptEntities tagsRes ]
+    -- FIXME: maybe don't wipe but just update? (perhaps not worth the effort)
+    wipeInsertMany
+        [ ActivityHashTag k (tagMap Map.! t) | (k, ts) <- actTags, t <- ts ]
+
+actHashTags :: Activity -> [HashTag]
+actHashTags Activity{activityName = name} =
+    [ HashTag w | w <- T.words name, "#" `T.isPrefixOf` w ]
+
+distinct :: (Ord a) => [a] -> [a]
+distinct = Set.toList . Set.fromList
+
 fromRightM :: (Monad m, Show a) => m (Either a b) -> m b
 fromRightM = fmap (either (error . show) id)
 
 data UpsertResult rec
-    = UpsertAdded (Key rec)
+    = UpsertAdded (Entity rec)
     | UpsertDeleted (Key rec)
-    | UpsertUpdated (Key rec)
-    | UpsertNoop (Key rec)
+    | UpsertUpdated (Entity rec)
+    | UpsertNoop (Entity rec)
 
-deriving instance Show (Key rec) => Show (UpsertResult rec)
+deriving instance (Show (Entity rec), Show (Key rec)) => Show (UpsertResult rec)
 
 uprepsert :: (Eq rec, Eq (Unique rec),
            PersistEntity rec, PersistEntityBackend rec ~ SqlBackend)
@@ -112,24 +147,25 @@ uprepsert rec =
             if entityVal dup /= rec
                 then do
                     Nothing <- replaceUnique (entityKey dup) rec
-                    return $ UpsertUpdated (entityKey dup)
+                    return $ UpsertUpdated dup
                 else
-                    return $ UpsertNoop (entityKey dup)
+                    return $ UpsertNoop dup
         Right key ->
-            return $ UpsertAdded key
+            return $ UpsertAdded $ Entity key rec
 
-delEntities :: (Eq rec, Eq (Unique rec),
-                PersistEntity rec, PersistEntityBackend rec ~ SqlBackend)
+delEntities :: (PersistEntity rec, PersistEntityBackend rec ~ SqlBackend)
                => [UpsertResult rec] -> SqlPersistM [UpsertResult rec]
 delEntities res = do
     allKeys <- selectKeysList [] []
-    let keepKeys = flip concatMap res $ \case
-            UpsertAdded   k -> [k]
-            UpsertDeleted _ -> []
-            UpsertUpdated k -> [k]
-            UpsertNoop    k -> [k]
-        delKeys = allKeys \\ keepKeys
+    let delKeys = allKeys \\ map entityKey (keptEntities res)
     mapM (\k -> delete k >> return (UpsertDeleted k)) delKeys
+
+keptEntities :: [UpsertResult rec] -> [Entity rec]
+keptEntities = concatMap $ \case
+    UpsertAdded   e -> [e]
+    UpsertDeleted _ -> []
+    UpsertUpdated e -> [e]
+    UpsertNoop    e -> [e]
 
 syncEntities :: (Eq rec, Eq (Unique rec),
                  PersistEntity rec, PersistEntityBackend rec ~ SqlBackend)
@@ -143,3 +179,10 @@ syncEntitiesDel recs = do
     syncRes <- syncEntities recs
     delRes <- delEntities syncRes
     return $ syncRes ++ delRes
+
+wipeInsertMany :: forall rec.
+                  (PersistEntity rec, PersistEntityBackend rec ~ SqlBackend)
+                  => [rec] -> SqlPersistM ()
+wipeInsertMany recs = do
+    deleteWhere ([] :: [Filter rec])
+    insertMany_ recs
