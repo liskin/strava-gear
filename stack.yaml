@@ -4,7 +4,7 @@ packages:
 - '.'
 - location:
     git: git://github.com/tfausak/strive.git
-    commit: cfbd995dacafb1242482c0b6ce23826fad505338
+    commit: f5743fc44f92c7964b754a74ce103a4a1d21b711
   extra-dep: true
 extra-deps:
 - gpolyline-0.1.0.1
