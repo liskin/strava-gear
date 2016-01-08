@@ -116,13 +116,34 @@ sync client = do
     conf <- T.readFile confFileName
     runSqlite (T.pack sqliteFileName) $ do
         runMigration migrateAll
-        _ <- syncBikes athleteBikes
-        _ <- syncActivities client -- FIXME: not always
+        bUpsert <- syncBikes athleteBikes
+        aUpsert <- syncActivities client -- FIXME: not always
         transactionSave
-        _ <- syncConfig conf
+        (cUpsert, rUpsert, lUpsert, hUpsert) <- syncConfig conf
         transactionSave
-        syncActivitiesComponents
+        let changed = (bUpsert, aUpsert, cUpsert, rUpsert, lUpsert, hUpsert)
+        syncActivitiesComponents $ activitiesToRefresh changed
     return $ T.pack sqliteFileName
+
+type WhatChanged =
+    ( [UpsertResult Bike]
+    , [UpsertResult Activity]
+    , [UpsertResult Component]
+    , [UpsertResult ComponentRole]
+    , [UpsertResult LongtermBikeComponent]
+    , [UpsertResult HashTagBikeComponent] )
+
+activitiesToRefresh :: WhatChanged -> Maybe [Key Activity]
+activitiesToRefresh (bUpsert, aUpsert, cUpsert, rUpsert, lUpsert, hUpsert) =
+    case onlyNoop bUpsert && confNoop of
+        True -> Just $ changedEntities aUpsert
+        False -> Nothing
+    where
+        isNoop (UpsertNoop _) = True
+        isNoop _ = False
+        onlyNoop = null . filter (not . isNoop)
+        confNoop = onlyNoop cUpsert && onlyNoop rUpsert
+                && onlyNoop lUpsert && onlyNoop hUpsert
 
 syncBikes :: [S.GearSummary] -> SqlPersistM [UpsertResult Bike]
 syncBikes bikes = syncEntitiesDel $ map bike bikes
@@ -159,19 +180,27 @@ fetchActivities client = do
                 else fmap (acts :) $ go (S.startDate `S.get` last acts)
 
 
-syncActivitiesComponents :: SqlPersistM ()
-syncActivitiesComponents = do
-    l <- activitiesLongtermComponents
-    h <- activitiesHashtagComponents
+syncActivitiesComponents :: Maybe [Key Activity] -> SqlPersistM ()
+syncActivitiesComponents new = do
+    l <- activitiesLongtermComponents new
+    h <- activitiesHashtagComponents new
     let dedup = distinctOn $ activityComponentActivity &&& activityComponentRole
-    wipeInsertMany $ dedup $ h ++ l
+    old <- mapM activityActivityComponents new
+    wipeInsertMany old $ dedup $ h ++ l
 
-activitiesLongtermComponents :: SqlPersistM [ActivityComponent]
-activitiesLongtermComponents = do
+activityActivityComponents :: [Key Activity] -> SqlPersistM [Key ActivityComponent]
+activityActivityComponents as =
+    fmap (map (\(E.Value v) -> v)) $ E.select $ E.from $ \ac -> do
+        E.where_ $ ac E.^. ActivityComponentActivity `E.in_` E.valList as
+        return $ ac E.^. ActivityComponentId
+
+activitiesLongtermComponents :: Maybe [Key Activity] -> SqlPersistM [ActivityComponent]
+activitiesLongtermComponents new = do
     let f (_, E.Value k, E.Value c, E.Value r) = ActivityComponent k c r
     fmap (map f) $ E.select $ E.from $ \(a `E.InnerJoin` b `E.InnerJoin` lt) -> do
         E.on $ a E.^. ActivityGearId E.==. E.just (b E.^. BikeStravaId)
         E.on $ b E.^. BikeId E.==. lt E.^. LongtermBikeComponentBike
+        mapM_ (\n -> E.where_ $ a E.^. ActivityId `E.in_` E.valList n) new
         E.where_ $ lt E.^. LongtermBikeComponentStartTime E.<=. a E.^. ActivityStartTime
         E.where_ $ lt E.^. LongtermBikeComponentEndTime E.>=. E.just (a E.^. ActivityStartTime)
             E.||. E.isNothing (lt E.^. LongtermBikeComponentEndTime)
@@ -181,8 +210,8 @@ activitiesLongtermComponents = do
                , lt E.^. LongtermBikeComponentComponent
                , lt E.^. LongtermBikeComponentRole)
 
-activitiesHashtagComponents :: SqlPersistM [ActivityComponent]
-activitiesHashtagComponents = do
+activitiesHashtagComponents :: Maybe [Key Activity] -> SqlPersistM [ActivityComponent]
+activitiesHashtagComponents new = do
     hashtags <- selectList [] []
     let tagMap = Map.fromListWith (++)
             [ ( hashTagBikeComponentTag h, [( hashTagBikeComponentComponent h
@@ -191,7 +220,8 @@ activitiesHashtagComponents = do
     let f (E.Value k, E.Value n) =
             [ ActivityComponent k c r
             | h <- nameHashTags n, (c, r) <- Map.findWithDefault [] h tagMap ]
-    fmap (concatMap f) $ E.select $ E.from $ \a ->
+    fmap (concatMap f) $ E.select $ E.from $ \a -> do
+        mapM_ (\n -> E.where_ $ a E.^. ActivityId `E.in_` E.valList n) new
         return (a E.^. ActivityId, a E.^. ActivityName)
 
 nameHashTags :: T.Text -> [T.Text]
@@ -379,6 +409,13 @@ keptEntities = concatMap $ \case
     UpsertUpdated e -> [e]
     UpsertNoop    e -> [e]
 
+changedEntities :: [UpsertResult rec] -> [Key rec]
+changedEntities = concatMap $ \case
+    UpsertAdded   e -> [entityKey e]
+    UpsertDeleted k -> [k]
+    UpsertUpdated e -> [entityKey e]
+    UpsertNoop    _ -> []
+
 syncEntities :: (Eq rec, Eq (Unique rec),
                  PersistEntity rec, PersistEntityBackend rec ~ SqlBackend)
              => [rec] -> SqlPersistM [UpsertResult rec]
@@ -394,9 +431,11 @@ syncEntitiesDel recs = do
 
 wipeInsertMany :: forall rec.
                   (PersistEntity rec, PersistEntityBackend rec ~ SqlBackend)
-               => [rec] -> SqlPersistM ()
-wipeInsertMany recs = do
-    deleteWhere ([] :: [Filter rec])
+               => Maybe [Key rec] -> [rec] -> SqlPersistM ()
+wipeInsertMany old recs = do
+    E.delete $ E.from $ \row -> case old of
+        Nothing -> return ()
+        Just olds -> E.where_ $ row E.^. persistIdField `E.in_` E.valList olds
     -- FIXME: https://github.com/yesodweb/persistent/issues/527
     mapM_ insertMany_ (chunksOf 100 recs)
 
