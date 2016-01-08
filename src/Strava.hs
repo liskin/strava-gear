@@ -106,8 +106,8 @@ deriving instance Eq (Unique HashTagBikeComponent)
 testClient :: IO S.Client
 testClient = S.buildClient (Just $ T.pack token)
 
-sync :: S.Client -> IO T.Text
-sync client = do
+sync :: Bool -> S.Client -> IO T.Text
+sync forceFetch client = do
     Right athlete <- S.getCurrentAthlete client
     let athleteId = S.id `S.get` athlete :: Integer
         athleteBikes = S.bikes `S.get` athlete
@@ -117,7 +117,7 @@ sync client = do
     runSqlite (T.pack sqliteFileName) $ do
         runMigration migrateAll
         bUpsert <- syncBikes athleteBikes
-        aUpsert <- syncActivities client -- FIXME: not always
+        aUpsert <- syncActivities forceFetch client
         (cUpsert, rUpsert, lUpsert, hUpsert) <- syncConfig conf
         let changed = (bUpsert, aUpsert, cUpsert, rUpsert, lUpsert, hUpsert)
         syncActivitiesComponents $ activitiesToRefresh changed
@@ -149,11 +149,15 @@ syncBikes :: [S.GearSummary] -> SqlPersistM [UpsertResult Bike]
 syncBikes bikes = syncEntitiesDel $ map bike bikes
     where bike b = Bike (S.name `S.get` b) (S.id `S.get` b)
 
--- TODO: avoid refetching all activities every time
-syncActivities :: S.Client -> SqlPersistM [UpsertResult Activity]
-syncActivities client = do
-    acts <- fetchActivities client
-    syncEntitiesDel $ map act acts
+syncActivities :: Bool -> S.Client -> SqlPersistM [UpsertResult Activity]
+syncActivities forceFetch client = do
+    fetchRes <- fetchActivitiesFast forceFetch client
+    case fetchRes of
+        Nothing ->
+            fmap (map $ \k -> UpsertNoop (Entity k undefined)) $
+                selectKeysList [] []
+        Just acts ->
+            syncEntitiesDel $ map act acts
     where
         act a = Activity
             { activityStravaId = fromIntegral $ S.id `S.get` a
@@ -169,16 +173,33 @@ fetchActivities client = do
     now <- liftIO $ getCurrentTime
     concat `fmap` go now
     where
-        fetch t =
-            fromRightM $ liftIO $ S.getCurrentActivities client $
-                S.with [ S.before `S.set` Just t ]
         go t = do
             liftIO $ putStrLn $ "fetching activities before " ++ show t
-            acts <- fetch t
+            acts <- fetchActivitiesBefore client t
             if null acts
                 then return [acts]
                 else fmap (acts :) $ go (S.startDate `S.get` last acts)
 
+-- | Check if we have the newest activity and skip sync if we do, unless
+-- forced to refresh.
+fetchActivitiesFast :: Bool -> S.Client -> SqlPersistM (Maybe [S.ActivitySummary])
+fetchActivitiesFast True client =
+    Just `fmap` fetchActivities client
+fetchActivitiesFast False client = do
+    first <- selectFirst [] [Desc ActivityStartTime]
+    now <- liftIO $ getCurrentTime
+    acts <- fetchActivitiesBefore client now
+    case (first, acts) of
+        (Just (Entity _ a1), a2:_)
+            | fromIntegral (S.id `S.get` a2) == activityStravaId a1 ->
+                return Nothing
+        _ ->
+            fetchActivitiesFast True client
+
+fetchActivitiesBefore :: S.Client -> UTCTime -> SqlPersistM [S.ActivitySummary]
+fetchActivitiesBefore client t = do
+    fromRightM $ liftIO $ S.getCurrentActivities client $
+        S.with [ S.before `S.set` Just t ]
 
 syncActivitiesComponents :: Maybe [Key Activity] -> SqlPersistM ()
 syncActivitiesComponents new = do
