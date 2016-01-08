@@ -66,6 +66,7 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistUpperCase|
         role ComponentRoleId
         startTime UTCTime
         endTime UTCTime Maybe
+        UniqueLongtermBikeComponent component bike role startTime
         deriving Eq Ord Show
 
     Activity
@@ -88,6 +89,7 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistUpperCase|
         tag T.Text
         component ComponentId
         role ComponentRoleId
+        UniqueHashTagBikeComponent tag component role
         deriving Eq Ord Show
 |]
 
@@ -95,6 +97,8 @@ deriving instance Eq (Unique Bike)
 deriving instance Eq (Unique Component)
 deriving instance Eq (Unique ComponentRole)
 deriving instance Eq (Unique Activity)
+deriving instance Eq (Unique LongtermBikeComponent)
+deriving instance Eq (Unique HashTagBikeComponent)
 
 
 -- Sync --
@@ -115,7 +119,7 @@ sync client = do
         _ <- syncBikes athleteBikes
         _ <- syncActivities client -- FIXME: not always
         transactionSave
-        syncConfig conf
+        _ <- syncConfig conf
         transactionSave
         syncActivitiesComponents
     return $ T.pack sqliteFileName
@@ -247,28 +251,32 @@ componentReport = do
 
 -- Text config (to be replaced by REST) --
 
-syncConfig :: T.Text -> SqlPersistM ()
+syncConfig :: T.Text -> SqlPersistM ( [UpsertResult Component]
+                                    , [UpsertResult ComponentRole]
+                                    , [UpsertResult LongtermBikeComponent]
+                                    , [UpsertResult HashTagBikeComponent] )
 syncConfig conf = do
     let ls = T.lines conf
         cs = concatMap parseConf ls
-    components <- fmap keptEntities $ syncEntitiesDel
+    components <- syncEntitiesDel
         [ Component c n dur dist | ConfComponent c n dur dist <- cs ]
-    roles <- fmap keptEntities $ syncEntitiesDel
+    roles <- syncEntitiesDel
         [ ComponentRole n | ConfRole n <- cs ]
     bikes <- selectList [] []
     let componentMap = Map.fromList
-            [ (componentUniqueId v, k) | Entity k v <- components ]
+            [ (componentUniqueId v, k) | Entity k v <- keptEntities components ]
         roleMap = Map.fromList
-            [ (componentRoleName v, k) | Entity k v <- roles ]
+            [ (componentRoleName v, k) | Entity k v <- keptEntities roles ]
         bikeMap = Map.fromList
             [ (bikeStravaId v, k) | Entity k v <- bikes ]
-    wipeInsertMany
+    longterms <- syncEntitiesDel
         [ LongtermBikeComponent (componentMap ! c)
                                 (bikeMap ! b) (roleMap ! r) s e
         | ConfLongterm c b r s e <- cs ]
-    wipeInsertMany
+    hashtags <- syncEntitiesDel
         [ HashTagBikeComponent t (componentMap ! c) (roleMap ! r)
         | ConfHashTag t c r <- cs ]
+    return (components, roles, longterms, hashtags)
 
 data Conf
     = ConfComponent T.Text T.Text Int Double
