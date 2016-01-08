@@ -118,9 +118,7 @@ sync client = do
         runMigration migrateAll
         bUpsert <- syncBikes athleteBikes
         aUpsert <- syncActivities client -- FIXME: not always
-        transactionSave
         (cUpsert, rUpsert, lUpsert, hUpsert) <- syncConfig conf
-        transactionSave
         let changed = (bUpsert, aUpsert, cUpsert, rUpsert, lUpsert, hUpsert)
         syncActivitiesComponents $ activitiesToRefresh changed
     return $ T.pack sqliteFileName
@@ -136,7 +134,9 @@ type WhatChanged =
 activitiesToRefresh :: WhatChanged -> Maybe [Key Activity]
 activitiesToRefresh (bUpsert, aUpsert, cUpsert, rUpsert, lUpsert, hUpsert) =
     case onlyNoop bUpsert && confNoop of
-        True -> Just $ changedEntities aUpsert
+        True -> case changedEntities aUpsert of
+            ch | length ch < 100 -> Just ch
+               | otherwise -> Nothing -- damn sqlite :-/
         False -> Nothing
     where
         isNoop (UpsertNoop _) = True
