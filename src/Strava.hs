@@ -17,10 +17,10 @@
 module Strava where
 
 import Control.Applicative
+import Control.Arrow ((&&&))
 import Control.Exception
 import Control.Monad.IO.Class (liftIO)
-import Data.Function (on)
-import Data.List ((\\), nubBy)
+import Data.List ((\\))
 import Data.List.Split (chunksOf)
 import Data.Time
 import Database.Persist
@@ -33,6 +33,7 @@ import qualified Data.Set as Set
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import qualified Database.Esqueleto as E
+import qualified Database.Esqueleto.Internal.Sql as E (veryUnsafeCoerceSqlExprValue)
 import qualified Strive as S
 import qualified Text.Tabular as Tab
 import qualified Text.Tabular.AsciiArt as Tab
@@ -156,49 +157,41 @@ fetchActivities client = do
 
 syncActivitiesComponents :: SqlPersistM ()
 syncActivitiesComponents = do
-    acts <- selectList [ActivityGearId !=. Nothing] []
-    actComponents <- mapM syncActivityComponents acts
-    wipeInsertMany $ concat actComponents
+    l <- activitiesLongtermComponents
+    h <- activitiesHashtagComponents
+    let dedup = distinctOn $ activityComponentActivity &&& activityComponentRole
+    wipeInsertMany $ dedup $ h ++ l
 
-syncActivityComponents :: Entity Activity -> SqlPersistM [ActivityComponent]
-syncActivityComponents act = do
-    let gearId = maybe (error "no gear id") id $ activityGearId $ entityVal act
-    getBy (StravaBikeId gearId) >>= \case
-        Nothing ->
-            -- ignore retired bikes, we don't have them in database
-            return []
-        Just bike -> do
-            longterms <- activityLongtermComponents bike act
-            fromtags <- activityHashtagComponents act
-            return $ nubBy ((==) `on` activityComponentRole) $ fromtags ++ longterms
+activitiesLongtermComponents :: SqlPersistM [ActivityComponent]
+activitiesLongtermComponents = do
+    let f (_, E.Value k, E.Value c, E.Value r) = ActivityComponent k c r
+    fmap (map f) $ E.select $ E.from $ \(a `E.InnerJoin` b `E.InnerJoin` lt) -> do
+        E.on $ a E.^. ActivityGearId E.==. E.just (b E.^. BikeStravaId)
+        E.on $ b E.^. BikeId E.==. lt E.^. LongtermBikeComponentBike
+        E.where_ $ lt E.^. LongtermBikeComponentStartTime E.<=. a E.^. ActivityStartTime
+        E.where_ $ lt E.^. LongtermBikeComponentEndTime E.>=. E.just (a E.^. ActivityStartTime)
+            E.||. E.isNothing (lt E.^. LongtermBikeComponentEndTime)
+        E.groupBy (a E.^. ActivityId, lt E.^. LongtermBikeComponentRole)
+        return ( castToPersistValue (E.max_ $ lt E.^. LongtermBikeComponentStartTime)
+               , a E.^. ActivityId
+               , lt E.^. LongtermBikeComponentComponent
+               , lt E.^. LongtermBikeComponentRole)
 
-activityLongtermComponents :: Entity Bike -> Entity Activity
-                           -> SqlPersistM [ActivityComponent]
-activityLongtermComponents bike (Entity k act) = do
-    let longtermFilter =
-            [ LongtermBikeComponentBike ==. entityKey bike
-            , LongtermBikeComponentStartTime <=. activityStartTime act
-            ] ++
-            ([ LongtermBikeComponentEndTime >=. Just (activityStartTime act) ] ||.
-             [ LongtermBikeComponentEndTime ==. Nothing ])
-    longterms <- selectList longtermFilter [Desc LongtermBikeComponentStartTime]
-    return [ ActivityComponent k
-             (longtermBikeComponentComponent l)
-             (longtermBikeComponentRole l)
-           | Entity _ l <- longterms ]
+activitiesHashtagComponents :: SqlPersistM [ActivityComponent]
+activitiesHashtagComponents = do
+    hashtags <- selectList [] []
+    let tagMap = Map.fromListWith (++)
+            [ ( hashTagBikeComponentTag h, [( hashTagBikeComponentComponent h
+                                            , hashTagBikeComponentRole h )] )
+            | Entity _ h <- hashtags ]
+    let f (E.Value k, E.Value n) =
+            [ ActivityComponent k c r
+            | h <- nameHashTags n, (c, r) <- Map.findWithDefault [] h tagMap ]
+    fmap (concatMap f) $ E.select $ E.from $ \a ->
+        return (a E.^. ActivityId, a E.^. ActivityName)
 
-activityHashtagComponents :: Entity Activity -> SqlPersistM [ActivityComponent]
-activityHashtagComponents (Entity k act) = do
-    let hashtagFilter = [ HashTagBikeComponentTag <-. actHashTags act ]
-    fromtags <- selectList hashtagFilter []
-    return [ ActivityComponent k
-             (hashTagBikeComponentComponent h)
-             (hashTagBikeComponentRole h)
-           | Entity _ h <- fromtags ]
-
-actHashTags :: Activity -> [T.Text]
-actHashTags Activity{activityName = name} =
-    [ w | w <- T.words name, "#" `T.isPrefixOf` w ]
+nameHashTags :: T.Text -> [T.Text]
+nameHashTags name = [ w | w <- T.words name, "#" `T.isPrefixOf` w ]
 
 
 -- Report --
@@ -327,8 +320,16 @@ parseUTCTime' t =
 
 -- Helpers --
 
-distinct :: (Ord a) => [a] -> [a]
-distinct = Set.toList . Set.fromList
+distinctOn :: (Ord b) => (a -> b) -> [a] -> [a]
+distinctOn f = go Set.empty
+    where
+        go _ [] = []
+        go seen (x:xs) =
+            let x' = f x
+            in if x' `Set.member` seen
+                then go seen xs
+                else x : go (x' `Set.insert` seen) xs
+
 
 fromRightM :: (Monad m, Show a) => m (Either a b) -> m b
 fromRightM = fmap (either (error . show) id)
@@ -396,3 +397,7 @@ m ! v = unsafePerformIO $ try (evaluate (m Map.! v)) >>= \case
     Right x -> return x
     Left (e :: SomeException) ->
         error $ show m ++ " ! " ++ show v ++ ": " ++ show e
+
+-- | Avoids the performance penalty of parsing into UTCTime
+castToPersistValue :: E.SqlExpr (E.Value a) -> E.SqlExpr (E.Value PersistValue)
+castToPersistValue = E.veryUnsafeCoerceSqlExprValue
