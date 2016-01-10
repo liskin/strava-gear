@@ -86,10 +86,21 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistUpperCase|
         deriving Eq Ord Show
 
     HashTagBikeComponent
-        tag T.Text
+        tag HashTagId
         component ComponentId
         role ComponentRoleId
         UniqueHashTagBikeComponent tag component role
+        deriving Eq Ord Show
+
+    HashTag
+        name T.Text
+        UniqueHashTag name
+        deriving Eq Ord Show
+
+    ActivityHashTag
+        activity ActivityId
+        tag HashTagId
+        UniqueActivityHashTag activity tag
         deriving Eq Ord Show
 |]
 
@@ -99,6 +110,7 @@ deriving instance Eq (Unique ComponentRole)
 deriving instance Eq (Unique Activity)
 deriving instance Eq (Unique LongtermBikeComponent)
 deriving instance Eq (Unique HashTagBikeComponent)
+deriving instance Eq (Unique HashTag)
 
 
 -- Sync --
@@ -120,7 +132,9 @@ sync forceFetch client = do
         aUpsert <- syncActivities forceFetch client
         (cUpsert, rUpsert, lUpsert, hUpsert) <- syncConfig conf
         let changed = (bUpsert, aUpsert, cUpsert, rUpsert, lUpsert, hUpsert)
-        syncActivitiesComponents $ activitiesToRefresh changed
+            newActs = activitiesToRefresh changed
+        syncHashTags newActs
+        syncActivitiesComponents newActs
     return $ T.pack sqliteFileName
 
 type WhatChanged =
@@ -201,6 +215,31 @@ fetchActivitiesBefore client t = do
     fromRightM $ liftIO $ S.getCurrentActivities client $
         S.with [ S.before `S.set` Just t ]
 
+syncHashTags :: Maybe [Key Activity] -> SqlPersistM ()
+syncHashTags new = do
+    let filt = case new of
+            Nothing -> []
+            Just n -> [ActivityId <-. n]
+    acts <- selectList filt []
+    let actTags = [ (entityKey e, actHashTags $ entityVal e) | e <- acts ]
+        allTags = distinctOn id $ concatMap snd actTags
+    tagsRes <- syncEntities allTags
+    let tagMap = Map.fromList [ (entityVal e, entityKey e)
+                              | e <- keptEntities tagsRes ]
+    old <- mapM activityActivityHashTags new
+    wipeInsertMany old
+        [ ActivityHashTag k (tagMap Map.! t) | (k, ts) <- actTags, t <- ts ]
+
+actHashTags :: Activity -> [HashTag]
+actHashTags Activity{activityName = name} =
+    [ HashTag w | w <- T.words name, "#" `T.isPrefixOf` w ]
+
+activityActivityHashTags :: [Key Activity] -> SqlPersistM [Key ActivityHashTag]
+activityActivityHashTags as =
+    fmap (map (\(E.Value v) -> v)) $ E.select $ E.from $ \ah -> do
+        E.where_ $ ah E.^. ActivityHashTagActivity `E.in_` E.valList as
+        return $ ah E.^. ActivityHashTagId
+
 syncActivitiesComponents :: Maybe [Key Activity] -> SqlPersistM ()
 syncActivitiesComponents new = do
     l <- activitiesLongtermComponents new
@@ -233,20 +272,14 @@ activitiesLongtermComponents new = do
 
 activitiesHashtagComponents :: Maybe [Key Activity] -> SqlPersistM [ActivityComponent]
 activitiesHashtagComponents new = do
-    hashtags <- selectList [] []
-    let tagMap = Map.fromListWith (++)
-            [ ( hashTagBikeComponentTag h, [( hashTagBikeComponentComponent h
-                                            , hashTagBikeComponentRole h )] )
-            | Entity _ h <- hashtags ]
-    let f (E.Value k, E.Value n) =
-            [ ActivityComponent k c r
-            | h <- nameHashTags n, (c, r) <- Map.findWithDefault [] h tagMap ]
-    fmap (concatMap f) $ E.select $ E.from $ \a -> do
+    let f (E.Value k, E.Value c, E.Value r) = ActivityComponent k c r
+    fmap (map f) $ E.select $ E.from $ \(a `E.InnerJoin` ah `E.InnerJoin` h) -> do
+        E.on $ a E.^. ActivityId E.==. ah E.^. ActivityHashTagActivity
+        E.on $ ah E.^. ActivityHashTagTag E.==. h E.^. HashTagBikeComponentTag
         mapM_ (\n -> E.where_ $ a E.^. ActivityId `E.in_` E.valList n) new
-        return (a E.^. ActivityId, a E.^. ActivityName)
-
-nameHashTags :: T.Text -> [T.Text]
-nameHashTags name = [ w | w <- T.words name, "#" `T.isPrefixOf` w ]
+        return ( a E.^. ActivityId
+               , h E.^. HashTagBikeComponentComponent
+               , h E.^. HashTagBikeComponentRole)
 
 
 -- Report --
@@ -314,18 +347,22 @@ syncConfig conf = do
     roles <- syncEntitiesDel
         [ ComponentRole n | ConfRole n <- cs ]
     bikes <- selectList [] []
+    let allTags = distinctOn id [ HashTag t | ConfHashTag t _ _ <- cs ]
+    tags <- syncEntities allTags
     let componentMap = Map.fromList
             [ (componentUniqueId v, k) | Entity k v <- keptEntities components ]
         roleMap = Map.fromList
             [ (componentRoleName v, k) | Entity k v <- keptEntities roles ]
         bikeMap = Map.fromList
             [ (bikeStravaId v, k) | Entity k v <- bikes ]
+        tagMap = Map.fromList
+            [ (hashTagName t, k) | Entity k t <- keptEntities tags ]
     longterms <- syncEntitiesDel
         [ LongtermBikeComponent (componentMap ! c)
                                 (bikeMap ! b) (roleMap ! r) s e
         | ConfLongterm c b r s e <- cs ]
     hashtags <- syncEntitiesDel
-        [ HashTagBikeComponent t (componentMap ! c) (roleMap ! r)
+        [ HashTagBikeComponent (tagMap ! t) (componentMap ! c) (roleMap ! r)
         | ConfHashTag t c r <- cs ]
     return (components, roles, longterms, hashtags)
 
