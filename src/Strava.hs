@@ -397,7 +397,7 @@ parseConf l = case T.words l of
                                         (Just $ parseUTCTime end)]
     ["hashtag", tag, component, role, start] ->
         [ConfHashTag tag component role (parseUTCTime start) Nothing]
-    err ->
+    _ ->
         error $ "malformed config line: " ++ T.unpack l
 
 parseDuration :: T.Text -> Int
