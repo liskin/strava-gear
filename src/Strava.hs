@@ -89,7 +89,9 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistUpperCase|
         tag HashTagId
         component ComponentId
         role ComponentRoleId
-        UniqueHashTagBikeComponent tag component role
+        startTime UTCTime
+        endTime UTCTime Maybe
+        UniqueHashTagBikeComponent tag component role startTime
         deriving Eq Ord Show
 
     HashTag
@@ -272,12 +274,17 @@ activitiesLongtermComponents new = do
 
 activitiesHashtagComponents :: Maybe [Key Activity] -> SqlPersistM [ActivityComponent]
 activitiesHashtagComponents new = do
-    let f (E.Value k, E.Value c, E.Value r) = ActivityComponent k c r
+    let f (_, E.Value k, E.Value c, E.Value r) = ActivityComponent k c r
     fmap (map f) $ E.select $ E.from $ \(a `E.InnerJoin` ah `E.InnerJoin` h) -> do
         E.on $ a E.^. ActivityId E.==. ah E.^. ActivityHashTagActivity
         E.on $ ah E.^. ActivityHashTagTag E.==. h E.^. HashTagBikeComponentTag
         mapM_ (\n -> E.where_ $ a E.^. ActivityId `E.in_` E.valList n) new
-        return ( a E.^. ActivityId
+        E.where_ $ h E.^. HashTagBikeComponentStartTime E.<=. a E.^. ActivityStartTime
+        E.where_ $ h E.^. HashTagBikeComponentEndTime E.>=. E.just (a E.^. ActivityStartTime)
+            E.||. E.isNothing (h E.^. HashTagBikeComponentEndTime)
+        E.groupBy (a E.^. ActivityId, h E.^. HashTagBikeComponentRole)
+        return ( castToPersistValue (E.max_ $ h E.^. HashTagBikeComponentStartTime)
+               , a E.^. ActivityId
                , h E.^. HashTagBikeComponentComponent
                , h E.^. HashTagBikeComponentRole)
 
@@ -347,7 +354,7 @@ syncConfig conf = do
     roles <- syncEntitiesDel
         [ ComponentRole n | ConfRole n <- cs ]
     bikes <- selectList [] []
-    let allTags = distinctOn id [ HashTag t | ConfHashTag t _ _ <- cs ]
+    let allTags = distinctOn id [ HashTag t | ConfHashTag t _ _ _ _ <- cs ]
     tags <- syncEntities allTags
     let componentMap = Map.fromList
             [ (componentUniqueId v, k) | Entity k v <- keptEntities components ]
@@ -362,15 +369,15 @@ syncConfig conf = do
                                 (bikeMap ! b) (roleMap ! r) s e
         | ConfLongterm c b r s e <- cs ]
     hashtags <- syncEntitiesDel
-        [ HashTagBikeComponent (tagMap ! t) (componentMap ! c) (roleMap ! r)
-        | ConfHashTag t c r <- cs ]
+        [ HashTagBikeComponent (tagMap ! t) (componentMap ! c) (roleMap ! r) s e
+        | ConfHashTag t c r s e <- cs ]
     return (components, roles, longterms, hashtags)
 
 data Conf
     = ConfComponent T.Text T.Text Int Double
     | ConfRole T.Text
     | ConfLongterm T.Text T.Text T.Text UTCTime (Maybe UTCTime)
-    | ConfHashTag T.Text T.Text T.Text
+    | ConfHashTag T.Text T.Text T.Text UTCTime (Maybe UTCTime)
 
 parseConf :: T.Text -> [Conf]
 parseConf l = case T.words l of
@@ -385,10 +392,13 @@ parseConf l = case T.words l of
                                           (Just $ parseUTCTime end)]
     ["longterm", component, bike, role, start] ->
         [ConfLongterm component bike role (parseUTCTime start) Nothing]
-    ["hashtag", tag, component, role] ->
-        [ConfHashTag tag component role]
+    ["hashtag", tag, component, role, start, end] ->
+        [ConfHashTag tag component role (parseUTCTime start)
+                                        (Just $ parseUTCTime end)]
+    ["hashtag", tag, component, role, start] ->
+        [ConfHashTag tag component role (parseUTCTime start) Nothing]
     err ->
-        error $ show err
+        error $ "malformed config line: " ++ T.unpack l
 
 parseDuration :: T.Text -> Int
 parseDuration (T.stripSuffix "h" -> Just t) = parseDuration t * 3600
