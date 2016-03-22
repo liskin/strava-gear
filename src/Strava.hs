@@ -22,6 +22,7 @@ import Control.Exception
 import Control.Monad.IO.Class (liftIO)
 import Data.List ((\\))
 import Data.List.Split (chunksOf)
+import Data.Maybe (fromMaybe)
 import Data.Time
 import Database.Esqueleto
 import Database.Esqueleto.Internal.Sql (veryUnsafeCoerceSqlExprValue)
@@ -334,11 +335,14 @@ componentReport = do
             ]
         timeFormat = formatTime defaultTimeLocale "%F"
         tab = [ [ T.unpack $ componentUniqueId c, T.unpack $ componentName c
-                , timeFormat firstUsage, timeFormat lastUsage, niceTime, niceDist ]
+                , maybe "" timeFormat firstUsage, maybe "" timeFormat lastUsage
+                , niceTime, niceDist ]
               | ( _, Entity _ c
-                , Value (Just time), Value (Just dist)
-                , Value (Just firstUsage), Value (Just lastUsage)
+                , Value time', Value dist'
+                , Value firstUsage, Value lastUsage
                 ) <- res
+              , let time = fromMaybe 0 time'
+              , let dist = fromMaybe 0 dist'
               , let niceTime = printf "%.1f" ((fromIntegral time :: Double) / 3600) ++ " hours"
               , let niceDist = printf "%.0f" ((dist :: Double) / 1000) ++ " km" ]
     return $ Tab.Table rh ch tab
@@ -378,7 +382,9 @@ bikesReport = do
             ]
         tab = [ [ T.unpack $ componentRoleName r, T.unpack $ componentUniqueId c,
                   T.unpack $ componentName c, niceTime, niceDist ]
-              | (_, _, Entity _ r, Entity _ c, Value (Just time), Value (Just dist)) <- res
+              | (_, _, Entity _ r, Entity _ c, Value time', Value dist') <- res
+              , let time = fromMaybe 0 time'
+              , let dist = fromMaybe 0 dist'
               , let niceTime = printf "%.1f" ((fromIntegral time :: Double) / 3600) ++ " hours"
               , let niceDist = printf "%.0f" ((dist :: Double) / 1000) ++ " km" ]
     return $ Tab.Table rh ch tab
