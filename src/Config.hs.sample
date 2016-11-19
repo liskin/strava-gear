@@ -1,4 +1,6 @@
+{-# OPTIONS_GHC -fno-warn-missing-signatures #-}
+
 module Config where
 
-clientId = 12345
+clientId = 12345 :: Integer
 clientSecret = "..."
