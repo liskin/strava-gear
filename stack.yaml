@@ -1,6 +1,4 @@
 resolver: lts-6.20
 flags: {}
 packages: ['.']
-extra-deps:
-    - gpolyline-0.1.0.1
-    - strive-2.2.2
+extra-deps: []
