@@ -1,4 +1,9 @@
-resolver: lts-6.20
+resolver: lts-7.14
 flags: {}
-packages: ['.']
+packages:
+    - .
+    - location:
+        git: https://github.com/qrilka/esqueleto
+        commit: 607f6692f0539df4e4f0e1d14beffcc6df2cdc49
+      extra-dep: true
 extra-deps: []
