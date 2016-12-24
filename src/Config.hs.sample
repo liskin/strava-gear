@@ -2,5 +2,6 @@
 
 module Config where
 
+url = "http://localhost:8080/"
 clientId = 12345 :: Integer
 clientSecret = "..."

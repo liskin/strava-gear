@@ -13,17 +13,30 @@ library:
     source-dirs: src
     dependencies:
         - base
+        - blaze-html
+        - cereal
+        - cereal-text
         - containers
+        - cryptonite
+        - bytestring
+        - data-default
         - esqueleto
+        - exceptions
+        - network-uri
         - persistent
         - persistent-sqlite
         - persistent-template
+        - servant-auth-cookie
+        - servant-blaze
+        - servant-server
         - split
         - strive
         - tabular
         - text
         - time
         - transformers
+        - wai
+        - warp
 
 executables:
     strava-gear-cmdline:
