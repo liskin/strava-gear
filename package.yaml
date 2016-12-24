@@ -1,0 +1,32 @@
+name: strava-gear
+version: '0.1.0.0'
+synopsis: Strava advanced gear tracker
+maintainer: Tomáš Janoušek <tomi@nomi.cz>
+copyright: (c) 2015-2017 Tomáš Janoušek
+license: BSD3
+github: liskin/strava-gear
+
+ghc-options:
+    - -Wall
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+
+dependencies:
+    - base
+    - containers
+    - esqueleto
+    - persistent
+    - persistent-sqlite
+    - persistent-template
+    - split
+    - strive
+    - tabular
+    - text
+    - time
+    - transformers
+
+executables:
+    strava-gear-exe:
+        main: Main.hs
+        source-dirs: src
