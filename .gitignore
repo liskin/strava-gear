@@ -1,2 +1,3 @@
 .stack-work/
-strava-gear.cabal
+/strava-gear.cabal
+/src/Config.hs
