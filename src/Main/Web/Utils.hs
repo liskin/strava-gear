@@ -12,7 +12,6 @@ module Main.Web.Utils
     , GetFound
     , redirect
     , showAbsoluteUri
-    , showRelativeUri
     , withBaseUri
     )
   where
@@ -44,9 +43,6 @@ type GetFound ctypes a
 
 redirect :: String -> Server (GetFound '[PlainText] String)
 redirect uri = pure $ addHeader uri ("redirect to " <> uri)
-
-showRelativeUri :: URI -> String
-showRelativeUri = ("/" <>) . show
 
 type CfgBaseUri = ?baseUri :: URI
 

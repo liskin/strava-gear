@@ -17,6 +17,7 @@ module Main.Web.Auth
     , CookieAuthProtect
     , LoginApi
     , cookieAuthHandler
+    , loginApi
     , serveStriveLogin
     , withAuthCookies
     , withStrive
@@ -114,6 +115,9 @@ type LoginApi
     :> QueryParam "code" String
     :> GetFound '[PlainText] (Headers '[Header "set-cookie" ByteString] String)
 
+loginApi :: Proxy LoginApi
+loginApi = Proxy
+
 type Link api l t = (IsElem l api, HasLink l, MkLink l ~ t)
 
 serveStriveLogin
@@ -133,7 +137,7 @@ serveStriveLogin api redirectApi = \case
     authorizeUri = S.buildAuthorizeUrl ?stravaAppId loginUri opts
     loginUri = showAbsoluteUri $ safeLink api (Proxy :: Proxy LoginApi) Nothing
     opts = S.set S.privateScope True $ def
-    redirectUri = showRelativeUri $ safeLink api redirectApi
+    redirectUri = showAbsoluteUri $ safeLink api redirectApi
     addSession' = addSession ?authCookieSettings ?randomSource ?serverKey
 
 type CookieAuthProtect = AuthProtect "cookie-auth"
