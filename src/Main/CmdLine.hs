@@ -1,6 +1,7 @@
 module Main.CmdLine (main) where
 
-import qualified Data.Text as T (pack)
+import Protolude
+
 import qualified Strive as S (Client, buildClient)
 
 import Config (token)
@@ -9,7 +10,7 @@ import StravaGear.Report (report)
 
 
 testClient :: IO S.Client
-testClient = S.buildClient $ Just $ T.pack token
+testClient = S.buildClient $ Just $ toS token
 
 main :: IO ()
 main = testClient >>= sync False >>= report

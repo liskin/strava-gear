@@ -6,6 +6,7 @@ copyright: (c) 2015-2017 Tomáš Janoušek
 license: BSD3
 github: liskin/strava-gear
 
+default-extensions: NoImplicitPrelude
 ghc-options:
     - -Wall
 
@@ -14,11 +15,11 @@ library:
     dependencies:
         - base
         - blaze-html
+        - bytestring
         - cereal
         - cereal-text
         - containers
         - cryptonite
-        - bytestring
         - data-default
         - esqueleto
         - exceptions
@@ -27,6 +28,7 @@ library:
         - persistent
         - persistent-sqlite
         - persistent-template
+        - protolude
         - servant-auth-cookie
         - servant-blaze
         - servant-server

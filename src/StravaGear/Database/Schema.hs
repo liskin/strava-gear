@@ -9,7 +9,8 @@
 
 module StravaGear.Database.Schema where
 
-import Data.Text (Text)
+import Protolude
+
 import Data.Time (UTCTime)
 import Database.Persist (Unique)
 import Database.Persist.TH

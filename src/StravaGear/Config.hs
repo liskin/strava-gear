@@ -7,9 +7,9 @@ module StravaGear.Config
     )
   where
 
-import Control.Applicative (Alternative(..))
-import Data.Text (Text)
-import qualified Data.Text as T (isPrefixOf, stripSuffix, unpack, words)
+import Protolude hiding (isPrefixOf)
+
+import Data.Text (words, isPrefixOf, stripSuffix)
 import Data.Time (UTCTime, defaultTimeLocale, iso8601DateFormat, parseTimeM)
 
 
@@ -20,8 +20,8 @@ data Conf
     | ConfHashTag Text Text Text UTCTime (Maybe UTCTime)
 
 parseConf :: Text -> [Conf]
-parseConf l = case T.words l of
-    comment:_ | "#" `T.isPrefixOf` comment -> []
+parseConf l = case words l of
+    comment:_ | "#" `isPrefixOf` comment -> []
     [] -> []
     ["component", code, name, iniDur, iniDist] ->
         [ConfComponent code name (parseDuration iniDur) (parseDist iniDist)]
@@ -38,20 +38,22 @@ parseConf l = case T.words l of
     ["hashtag", tag, component, role, start] ->
         [ConfHashTag tag component role (parseUTCTime start) Nothing]
     _ ->
-        error $ "malformed config line: " ++ T.unpack l
+        panic $ "malformed config line: " <> l
 
 parseDuration :: Text -> Int
-parseDuration (T.stripSuffix "h" -> Just t) = parseDuration t * 3600
-parseDuration (T.stripSuffix "d" -> Just t) = parseDuration t * 86400
-parseDuration t = read $ T.unpack t
+parseDuration (stripSuffix "h" -> Just t) = parseDuration t * 3600
+parseDuration (stripSuffix "d" -> Just t) = parseDuration t * 86400
+parseDuration (readMaybe . toS -> Just t) = t
+parseDuration s = panic $ "malformed duration: " <> s
 
 parseDist :: Text -> Double
-parseDist (T.stripSuffix "km" -> Just t) = parseDist t * 1000
-parseDist t = read $ T.unpack t
+parseDist (stripSuffix "km" -> Just t) = parseDist t * 1000
+parseDist (readMaybe . toS -> Just t) = t
+parseDist s = panic $ "malformed dist: " <> s
 
 parseUTCTime :: Text -> UTCTime
 parseUTCTime t =
-    maybe (error $ "parseUTCTime " ++ T.unpack t) id $ parseUTCTime' t
+    maybe (panic $ "parseUTCTime " <> t) identity $ parseUTCTime' t
 
 parseUTCTime' :: Text -> Maybe UTCTime
 parseUTCTime' t =
@@ -61,4 +63,4 @@ parseUTCTime' t =
     parse (iso8601DateFormat (Just "%H:%M:%S%z")) <|>
     empty
     where
-        parse f = parseTimeM False defaultTimeLocale f (T.unpack t)
+        parse f = parseTimeM False defaultTimeLocale f (toS t)

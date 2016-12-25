@@ -16,7 +16,9 @@ module Main.Web.Utils
     )
   where
 
-import Data.Monoid ((<>))
+import Protolude
+
+import Data.String (String)
 
 import Network.URI (URI, parseAbsoluteURI, relativeTo)
 import Servant

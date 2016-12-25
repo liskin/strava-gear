@@ -14,6 +14,8 @@ module StravaGear.Database.Utils
     )
   where
 
+import Protolude hiding (from)
+
 import Data.List ((\\))
 
 import Data.List.Split (chunksOf)

@@ -24,17 +24,15 @@ module Main.Web.Auth
     )
   where
 
-import Data.Proxy (Proxy(Proxy))
-import GHC.Generics (Generic)
+import Protolude hiding (handle)
+
+import Data.String (String)
 
 import Control.Monad.Catch (handle)
-import Control.Monad.IO.Class (liftIO)
 import Crypto.Random (drgNew)
-import Data.ByteString (ByteString)
 import Data.Default (def)
 import Data.Serialize (Serialize)
 import Data.Serialize.Text ()
-import Data.Text (Text)
 import Network.URI (URI)
 import Network.Wai (Request)
 import Servant

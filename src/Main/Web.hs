@@ -1,14 +1,15 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 
 module Main.Web (main) where
 
-import Data.Monoid ((<>))
-import Data.Proxy (Proxy(Proxy))
-import System.Environment (getArgs)
+import Protolude hiding (link)
 
 import Network.Wai.Application.Static
     ( defaultWebAppSettings
@@ -43,7 +44,7 @@ import Main.Web.Utils
 
 main :: IO ()
 main = do
-    [read -> port] <- getArgs
+    [readMaybe -> Just port] <- getArgs
     withStrive Config.clientId Config.clientSecret $
         withBaseUri Config.url $
         withAuthCookies $
@@ -137,3 +138,5 @@ serveTest Auth{..} = pure . H.docTypeHtml $ do
     H.body $ do
         H.p $ "token: " <> H.text authToken
         H.p $ "athlete: " <> H.string (show authAthlete)
+
+instance Semigroup Markup

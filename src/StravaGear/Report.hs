@@ -5,12 +5,12 @@ module StravaGear.Report
     )
   where
 
+import Protolude hiding (from, on)
+
 import Data.Maybe (fromMaybe)
+import Data.String (String)
 import Text.Printf (printf)
 
-import Control.Monad.IO.Class (liftIO)
-import Data.Text (Text)
-import qualified Data.Text as T (unpack)
 import Data.Time (defaultTimeLocale, formatTime)
 import Database.Esqueleto
     ( InnerJoin(InnerJoin)
@@ -50,9 +50,9 @@ report fileName = do
         tab1 <- componentReport
         tab2 <- bikesReport
         liftIO $ do
-            putStr $ Tab.render id id id tab1
+            putStr $ Tab.render identity identity identity tab1
             putStrLn ""
-            putStr $ Tab.render id id id tab2
+            putStr $ Tab.render identity identity identity tab2
 
 componentReport :: SqlPersistM (Tab.Table String String String)
 componentReport = do
@@ -76,7 +76,7 @@ componentReport = do
                 , iniTime +. sumMovingTime
                 , iniDist +. sumDist
                 , firstUsage, lastUsage )
-    let ids = [ T.unpack $ componentRoleName r
+    let ids = [ toS $ componentRoleName r
               | (Entity _ r, _, _, _, _, _) <- res ]
         rh = Tab.Group Tab.NoLine (map Tab.Header ids)
         ch = Tab.Group Tab.DoubleLine
@@ -85,7 +85,7 @@ componentReport = do
             , Tab.Group Tab.SingleLine [Tab.Header "time", Tab.Header "distance"]
             ]
         timeFormat = formatTime defaultTimeLocale "%F"
-        tab = [ [ T.unpack $ componentUniqueId c, T.unpack $ componentName c
+        tab = [ [ toS $ componentUniqueId c, toS $ componentName c
                 , maybe "" timeFormat firstUsage, maybe "" timeFormat lastUsage
                 , niceTime, niceDist ]
               | ( _, Entity _ c
@@ -125,14 +125,14 @@ bikesReport = do
             , iniDist +. sumDist
             )
     let rh = Tab.Group Tab.NoLine $ map Tab.Header $
-            [ T.unpack $ bikeName b
+            [ toS $ bikeName b
             | (_, Entity _ b, _, _, _, _) <- res ]
         ch = Tab.Group Tab.DoubleLine
             [ Tab.Group Tab.SingleLine [Tab.Header "role", Tab.Header "id", Tab.Header "name"]
             , Tab.Group Tab.SingleLine [Tab.Header "time", Tab.Header "distance"]
             ]
-        tab = [ [ T.unpack $ componentRoleName r, T.unpack $ componentUniqueId c,
-                  T.unpack $ componentName c, niceTime, niceDist ]
+        tab = [ [ toS $ componentRoleName r, toS $ componentUniqueId c,
+                  toS $ componentName c, niceTime, niceDist ]
               | (_, _, Entity _ r, Entity _ c, Value time', Value dist') <- res
               , let time = fromMaybe 0 time'
               , let dist = fromMaybe 0 dist'

@@ -7,16 +7,14 @@ module StravaGear.Sync
     )
   where
 
+import Protolude hiding (from, isNothing, isPrefixOf, on)
+
 import Control.Arrow ((&&&))
-import Control.Exception (SomeException, try, evaluate)
-import qualified Data.Map as Map (Map, (!), fromList)
+import qualified Data.Map as Map ((!), fromList)
 import qualified Data.Set as Set (empty, insert, member)
 import System.IO.Unsafe (unsafePerformIO)
 
-import Control.Monad.IO.Class (liftIO)
-import Data.Text (Text)
-import qualified Data.Text as T (isPrefixOf, lines, pack, words)
-import qualified Data.Text.IO as T (readFile)
+import Data.Text (isPrefixOf, lines, words)
 import Data.Time (UTCTime, getCurrentTime)
 import Database.Esqueleto
     ( InnerJoin(InnerJoin)
@@ -59,8 +57,8 @@ sync forceFetch client = do
         athleteBikes = S.bikes `S.get` athlete
         sqliteFileName = "athlete_" ++ show athleteId ++ ".sqlite"
         confFileName = "athlete_" ++ show athleteId ++ ".conf"
-    conf <- T.readFile confFileName
-    runSqlite (T.pack sqliteFileName) $ do
+    conf <- readFile confFileName
+    runSqlite (toS sqliteFileName) $ do
         runMigration migrateAll
         bUpsert <- syncBikes athleteBikes
         aUpsert <- syncActivities forceFetch client
@@ -69,7 +67,7 @@ sync forceFetch client = do
         let newActs = activitiesToRefresh changed
         syncHashTags newActs
         syncActivitiesComponents newActs
-    return $ T.pack sqliteFileName
+    return $ toS sqliteFileName
 
 type WhatChanged =
     ( [UpsertResult Bike]
@@ -124,9 +122,10 @@ fetchActivities client = do
         go t = do
             liftIO $ putStrLn $ "fetching activities before " ++ show t
             acts <- fetchActivitiesBefore client t
-            if null acts
-                then return [acts]
-                else fmap (acts :) $ go (S.startDate `S.get` last acts)
+            case lastMay acts of
+                Nothing -> pure [acts]
+                Just lastAct ->
+                    fmap (acts :) $ go (S.startDate `S.get` lastAct)
 
 -- | Check if we have the newest activity and skip sync if we do, unless
 -- forced to refresh.
@@ -134,10 +133,10 @@ fetchActivitiesFast :: Bool -> S.Client -> SqlPersistM (Maybe [S.ActivitySummary
 fetchActivitiesFast True client =
     Just `fmap` fetchActivities client
 fetchActivitiesFast False client = do
-    first <- selectFirst [] [Desc ActivityStartTime]
+    newest <- selectFirst [] [Desc ActivityStartTime]
     now <- liftIO $ getCurrentTime
     acts <- fetchActivitiesBefore client now
-    case (first, acts) of
+    case (newest, acts) of
         (Just (Entity _ a1), a2:_)
             | fromIntegral (S.id `S.get` a2) == activityStravaId a1 ->
                 return Nothing
@@ -150,7 +149,7 @@ fetchActivitiesBefore client t =
         S.with [ S.before `S.set` Just t ]
   where
     fromRightM :: (Monad m, Show a) => m (Either a b) -> m b
-    fromRightM = fmap (either (error . show) id)
+    fromRightM = fmap (either (panic . show) identity)
 
 
 syncHashTags :: Maybe [Key Activity] -> SqlPersistM ()
@@ -160,7 +159,7 @@ syncHashTags new = do
             Just n -> [ActivityId <-. n]
     acts <- selectList filt []
     let actTags = [ (entityKey e, actHashTags $ entityVal e) | e <- acts ]
-        allTags = distinctUsing id $ concatMap snd actTags
+        allTags = distinctUsing identity $ concatMap snd actTags
     tagsRes <- syncEntities allTags
     let tagMap = Map.fromList [ (entityVal e, entityKey e)
                               | e <- keptEntities tagsRes ]
@@ -170,7 +169,7 @@ syncHashTags new = do
 
 actHashTags :: Activity -> [HashTag]
 actHashTags Activity{activityName = name} =
-    [ HashTag w | w <- T.words name, "#" `T.isPrefixOf` w ]
+    [ HashTag w | w <- words name, "#" `isPrefixOf` w ]
 
 activityActivityHashTags :: [Key Activity] -> SqlPersistM [Key ActivityHashTag]
 activityActivityHashTags as =
@@ -229,14 +228,15 @@ syncConfig :: Text -> SqlPersistM ( [UpsertResult Component]
                                   , [UpsertResult LongtermBikeComponent]
                                   , [UpsertResult HashTagBikeComponent] )
 syncConfig conf = do
-    let ls = T.lines conf
+    let ls = lines conf
         cs = concatMap parseConf ls
     components <- syncEntitiesDel
         [ Component c n dur dist | ConfComponent c n dur dist <- cs ]
     roles <- syncEntitiesDel
         [ ComponentRole n | ConfRole n <- cs ]
     bikes <- selectList [] []
-    let allTags = distinctUsing id [ HashTag t | ConfHashTag t _ _ _ _ <- cs ]
+    let allTags = distinctUsing identity
+            [ HashTag t | ConfHashTag t _ _ _ _ <- cs ]
     tags <- syncEntities allTags
     let componentMap = Map.fromList
             [ (componentUniqueId v, k) | Entity k v <- keptEntities components ]
@@ -255,11 +255,11 @@ syncConfig conf = do
         | ConfHashTag t c r s e <- cs ]
     return (components, roles, longterms, hashtags)
   where
-    (!) :: (Ord k, Show k, Show a) => Map.Map k a -> k -> a
+    (!) :: (Ord k, Show k, Show a) => Map k a -> k -> a
     m ! v = unsafePerformIO $ try (evaluate (m Map.! v)) >>= \case
         Right x -> return x
         Left e ->
-            error $ show m ++ " ! " ++ show v ++ ": " ++ show (e :: SomeException)
+            panic . toS $ show m ++ " ! " ++ show v ++ ": " ++ show (e :: SomeException)
 
 distinctUsing :: (Ord b) => (a -> b) -> [a] -> [a]
 distinctUsing f = go Set.empty
