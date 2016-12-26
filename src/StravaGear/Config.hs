@@ -9,7 +9,7 @@ module StravaGear.Config
 
 import Protolude hiding (isPrefixOf)
 
-import Data.Text (words, isPrefixOf, stripSuffix)
+import Data.Text (lines, words, isPrefixOf, stripSuffix)
 import Data.Time (UTCTime, defaultTimeLocale, iso8601DateFormat, parseTimeM)
 
 
@@ -18,9 +18,13 @@ data Conf
     | ConfRole Text
     | ConfLongterm Text Text Text UTCTime (Maybe UTCTime)
     | ConfHashTag Text Text Text UTCTime (Maybe UTCTime)
+    deriving (Eq, Ord, Show)
 
 parseConf :: Text -> [Conf]
-parseConf l = case words l of
+parseConf = concatMap parseConfLine . lines
+
+parseConfLine :: Text -> [Conf]
+parseConfLine l = case words l of
     comment:_ | "#" `isPrefixOf` comment -> []
     [] -> []
     ["component", code, name, iniDur, iniDist] ->

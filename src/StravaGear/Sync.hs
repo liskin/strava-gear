@@ -14,7 +14,7 @@ import qualified Data.Map as Map ((!), fromList)
 import qualified Data.Set as Set (empty, insert, member)
 import System.IO.Unsafe (unsafePerformIO)
 
-import Data.Text (isPrefixOf, lines, words)
+import Data.Text (isPrefixOf, words)
 import Data.Time (UTCTime, getCurrentTime)
 import Database.Esqueleto
     ( InnerJoin(InnerJoin)
@@ -228,8 +228,7 @@ syncConfig :: Text -> SqlPersistM ( [UpsertResult Component]
                                   , [UpsertResult LongtermBikeComponent]
                                   , [UpsertResult HashTagBikeComponent] )
 syncConfig conf = do
-    let ls = lines conf
-        cs = concatMap parseConf ls
+    let cs = parseConf conf
     components <- syncEntitiesDel
         [ Component c n dur dist | ConfComponent c n dur dist <- cs ]
     roles <- syncEntitiesDel

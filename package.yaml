@@ -7,13 +7,15 @@ license: BSD3
 github: liskin/strava-gear
 
 default-extensions: NoImplicitPrelude
+dependencies:
+    - base
+    - protolude
 ghc-options:
     - -Wall
 
 library:
     source-dirs: src
     dependencies:
-        - base
         - blaze-html
         - bytestring
         - cereal
@@ -28,7 +30,6 @@ library:
         - persistent
         - persistent-sqlite
         - persistent-template
-        - protolude
         - servant-auth-cookie
         - servant-blaze
         - servant-server
@@ -41,6 +42,16 @@ library:
         - wai
         - wai-app-static
         - warp
+
+tests:
+    hspec:
+        main: hspec.hs
+        source-dirs: test
+        dependencies:
+            - hspec
+            - strava-gear
+        ghc-options:
+            - -threaded
 
 executables:
     strava-gear-cmdline:
