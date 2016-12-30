@@ -26,10 +26,12 @@ library:
         - esqueleto
         - exceptions
         - filepath
+        - megaparsec >=5 && <5.2
         - network-uri
         - persistent
         - persistent-sqlite
         - persistent-template
+        - scientific
         - servant-auth-cookie
         - servant-blaze
         - servant-server
@@ -49,6 +51,7 @@ tests:
         source-dirs: test
         dependencies:
             - hspec
+            - hspec-megaparsec
             - strava-gear
         ghc-options:
             - -threaded

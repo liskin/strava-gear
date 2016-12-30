@@ -45,7 +45,7 @@ import Database.Persist.Sql (SqlPersistM, runMigration)
 import Database.Persist.Sqlite (runSqlite)
 import qualified Strive as S
 
-import StravaGear.Config
+import StravaGear.Config (Conf(..), parseConf)
 import StravaGear.Database.Schema
 import StravaGear.Database.Utils
 
@@ -228,7 +228,7 @@ syncConfig :: Text -> SqlPersistM ( [UpsertResult Component]
                                   , [UpsertResult LongtermBikeComponent]
                                   , [UpsertResult HashTagBikeComponent] )
 syncConfig conf = do
-    let cs = parseConf conf
+    let Right cs = parseConf conf
     components <- syncEntitiesDel
         [ Component c n dur dist | ConfComponent c n dur dist <- cs ]
     roles <- syncEntitiesDel
@@ -248,10 +248,10 @@ syncConfig conf = do
     longterms <- syncEntitiesDel
         [ LongtermBikeComponent (componentMap ! c)
                                 (bikeMap ! b) (roleMap ! r) s e
-        | ConfLongterm c b r s e <- cs ]
+        | ConfLongterm b r c s e <- cs ]
     hashtags <- syncEntitiesDel
         [ HashTagBikeComponent (tagMap ! t) (componentMap ! c) (roleMap ! r) s e
-        | ConfHashTag t c r s e <- cs ]
+        | ConfHashTag t r c s e <- cs ]
     return (components, roles, longterms, hashtags)
   where
     (!) :: (Ord k, Show k, Show a) => Map k a -> k -> a
