@@ -1,7 +1,3 @@
-module StravaGear.Config
-    ( Conf(..)
-    , parseConf
-    )
-  where
+module StravaGear.Config (module X) where
 
-import StravaGear.Config.Internal (Conf(..), parseConf)
+import StravaGear.Config.Internal as X (Conf(..), parseConf)

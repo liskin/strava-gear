@@ -21,25 +21,32 @@ import Database.Persist.TH
     , sqlSettings
     )
 
+import StravaGear.Types
+    ( BikeText
+    , ComponentText
+    , HashTagText
+    , RoleText
+    )
+
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistUpperCase|
     Bike
         name Text
-        stravaId Text
-        StravaBikeId stravaId
+        stravaId BikeText
+        UniqueBike stravaId
         deriving Eq Ord Show
 
     Component
-        uniqueId Text
-        UniqueId uniqueId
+        uniqueId ComponentText
+        UniqueComponent uniqueId
         name Text
         initialSeconds Int -- seconds
         initialMeters Double -- meters
         deriving Eq Ord Show
 
     ComponentRole
-        name Text
-        UniqueName name
+        name RoleText
+        UniqueRole name
         deriving Eq Ord Show
 
     LongtermBikeComponent
@@ -53,12 +60,12 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistUpperCase|
 
     Activity
         stravaId Int
-        StravaActivityId stravaId
+        UniqueActivity stravaId
         name Text
         startTime UTCTime
         movingTime Int -- seconds
         distance Double -- meters
-        gearId Text Maybe
+        gearId BikeText Maybe
         deriving Eq Ord Show
 
     ActivityComponent
@@ -77,7 +84,7 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistUpperCase|
         deriving Eq Ord Show
 
     HashTag
-        name Text
+        name HashTagText
         UniqueHashTag name
         deriving Eq Ord Show
 

@@ -48,6 +48,10 @@ import qualified Strive as S
 import StravaGear.Config (Conf(..), parseConf)
 import StravaGear.Database.Schema
 import StravaGear.Database.Utils
+import StravaGear.Types
+    ( BikeText(BikeText)
+    , HashTagText(HashTagText)
+    )
 
 
 sync :: Bool -> S.Client -> IO Text
@@ -93,7 +97,7 @@ activitiesToRefresh (bUpsert, aUpsert, cUpsert, rUpsert, lUpsert, hUpsert) =
 
 syncBikes :: [S.GearSummary] -> SqlPersistM [UpsertResult Bike]
 syncBikes bikes = syncEntitiesDel $ map bike bikes
-    where bike b = Bike (S.name `S.get` b) (S.id `S.get` b)
+    where bike b = Bike (S.name `S.get` b) (BikeText $ S.id `S.get` b)
 
 syncActivities :: Bool -> S.Client -> SqlPersistM [UpsertResult Activity]
 syncActivities forceFetch client = do
@@ -111,7 +115,7 @@ syncActivities forceFetch client = do
             , activityStartTime = S.startDate `S.get` a
             , activityMovingTime = fromIntegral $ S.movingTime `S.get` a
             , activityDistance = S.distance `S.get` a
-            , activityGearId = S.gearId `S.get` a
+            , activityGearId = BikeText <$> S.gearId `S.get` a
             }
 
 fetchActivities :: S.Client -> SqlPersistM [S.ActivitySummary]
@@ -169,7 +173,7 @@ syncHashTags new = do
 
 actHashTags :: Activity -> [HashTag]
 actHashTags Activity{activityName = name} =
-    [ HashTag w | w <- words name, "#" `isPrefixOf` w ]
+    [ HashTag (HashTagText w) | w <- words name, "#" `isPrefixOf` w ]
 
 activityActivityHashTags :: [Key Activity] -> SqlPersistM [Key ActivityHashTag]
 activityActivityHashTags as =

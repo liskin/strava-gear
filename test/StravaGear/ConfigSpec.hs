@@ -4,12 +4,18 @@ module StravaGear.ConfigSpec (spec) where
 
 import Protolude
 
+import qualified Data.Set as S (fromList)
 import Data.Time (UTCTime(UTCTime), fromGregorian)
 import Test.Hspec
 import Test.Hspec.Megaparsec
 import Text.Megaparsec (parse)
 
-import StravaGear.Config.Internal (Conf(..), parseConf', time)
+import StravaGear.Config.Internal
+    ( Conf(..)
+    , Symbol(..)
+    , parseConf', time
+    )
+import StravaGear.Types (ComponentText(..), RoleText(..))
 
 spec :: Spec
 spec = do
@@ -18,7 +24,7 @@ spec = do
 
 spec_conf :: Spec
 spec_conf = describe "parseConf'" $ do
-    let p = parseConf'
+    let p = parseConf' known
     it "parses empty files" $ do
         p "" `shouldParse` []
         p " " `shouldParse` []
@@ -57,6 +63,8 @@ spec_conf = describe "parseConf'" $ do
         p `shouldFailOn` "bike b"
         p `shouldFailOn` "bike b chain c1 2016-01-01"
         p `shouldFailOn` "bike b\nchain c1 2016-01-01"
+        p `shouldFailOn` "bike b\n cain c1 2016-01-01"
+        p `shouldFailOn` "bike b\n chain c2 2016-01-01"
     it "parses hashtag" $ do
         p "hashtag #b\n chain c1 2016-01-01" `shouldParse`
             [ConfHashTag "#b" "chain" "c1" t0 Nothing]
@@ -64,8 +72,16 @@ spec_conf = describe "parseConf'" $ do
         p `shouldFailOn` "hashtag #b"
         p `shouldFailOn` "hashtag #b chain c1 2016-01-01"
         p `shouldFailOn` "hashtag #b\nchain c1 2016-01-01"
+        p `shouldFailOn` "hashtag b\n chain c1 2016-01-01"
+        p `shouldFailOn` "hashtag \"#b\"\n chain c1 2016-01-01"
+        p `shouldFailOn` "hashtag #b\n cain c1 2016-01-01"
+        p `shouldFailOn` "hashtag #b\n chain c2 2016-01-01"
   where
     t0 = UTCTime (fromGregorian 2016 1 1) 0
+    known = S.fromList
+        [ Symbol (RoleText "chain")
+        , Symbol (ComponentText "c1")
+        ]
 
 spec_time :: Spec
 spec_time = describe "time" $ do

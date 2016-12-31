@@ -42,6 +42,7 @@ import qualified Text.Tabular.AsciiArt as Tab (render)
 
 import StravaGear.Database.Schema
 import StravaGear.Database.Utils (castToPersistValue)
+import StravaGear.Types (fromComponent, fromRole)
 
 
 report :: Text -> IO ()
@@ -76,7 +77,7 @@ componentReport = do
                 , iniTime +. sumMovingTime
                 , iniDist +. sumDist
                 , firstUsage, lastUsage )
-    let ids = [ toS $ componentRoleName r
+    let ids = [ toS $ fromRole $ componentRoleName r
               | (Entity _ r, _, _, _, _, _) <- res ]
         rh = Tab.Group Tab.NoLine (map Tab.Header ids)
         ch = Tab.Group Tab.DoubleLine
@@ -85,7 +86,8 @@ componentReport = do
             , Tab.Group Tab.SingleLine [Tab.Header "time", Tab.Header "distance"]
             ]
         timeFormat = formatTime defaultTimeLocale "%F"
-        tab = [ [ toS $ componentUniqueId c, toS $ componentName c
+        tab = [ [ toS $ fromComponent $ componentUniqueId c
+                , toS $ componentName c
                 , maybe "" timeFormat firstUsage, maybe "" timeFormat lastUsage
                 , niceTime, niceDist ]
               | ( _, Entity _ c
@@ -131,8 +133,9 @@ bikesReport = do
             [ Tab.Group Tab.SingleLine [Tab.Header "role", Tab.Header "id", Tab.Header "name"]
             , Tab.Group Tab.SingleLine [Tab.Header "time", Tab.Header "distance"]
             ]
-        tab = [ [ toS $ componentRoleName r, toS $ componentUniqueId c,
-                  toS $ componentName c, niceTime, niceDist ]
+        tab = [ [ toS $ fromRole $ componentRoleName r
+                , toS $ fromComponent $ componentUniqueId c
+                , toS $ componentName c, niceTime, niceDist ]
               | (_, _, Entity _ r, Entity _ c, Value time', Value dist') <- res
               , let time = fromMaybe 0 time'
               , let dist = fromMaybe 0 dist'

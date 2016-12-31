@@ -1,9 +1,15 @@
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE OverloadedStrings #-}
+
 module StravaGear.Config.Internal
     ( Conf(..)
     , parseConf
 
     -- * testing
+    , Symbol(..)
     , parseConf'
     , time
     )
@@ -11,12 +17,15 @@ module StravaGear.Config.Internal
 
 import Protolude hiding (isPrefixOf, try)
 
+import Control.Monad.Fail (MonadFail(fail))
+import qualified Data.Set as S (member, singleton)
 import Data.String (String)
 
 import Data.Scientific (toRealFloat)
 import Data.Time (UTCTime, defaultTimeLocale, iso8601DateFormat, parseTimeM)
 import Text.Megaparsec
     ( Dec
+    , ParsecT
     , ParseError
     , alphaNumChar
     , char
@@ -27,12 +36,11 @@ import Text.Megaparsec
     , numberChar
     , oneOf
     , option
-    , parse
+    , runParserT
     , parseErrorPretty
     , spaceChar
     , string
     )
-import Text.Megaparsec.Text (Parser)
 import qualified Text.Megaparsec.Lexer as L
     ( IndentOpt(..)
     , charLiteral
@@ -45,23 +53,26 @@ import qualified Text.Megaparsec.Lexer as L
     , space
     )
 
+import StravaGear.Types
+    ( BikeText(BikeText)
+    , ComponentText(ComponentText)
+    , HashTagText(HashTagText)
+    , RoleText(RoleText)
+    )
+
 
 data Conf
-    = ConfComponent Text Text Int Double
-    | ConfRole Text
-    | ConfLongterm Text Text Text UTCTime (Maybe UTCTime)
-    | ConfHashTag Text Text Text UTCTime (Maybe UTCTime)
-    deriving (Eq, Ord, Show)
+    = ConfComponent ComponentText Text Int Double
+    | ConfRole RoleText
+    | ConfLongterm BikeText RoleText ComponentText UTCTime (Maybe UTCTime)
+    | ConfHashTag HashTagText RoleText ComponentText UTCTime (Maybe UTCTime)
+  deriving (Eq, Ord, Show)
 
 parseConf :: Text -> Either Text [Conf]
-parseConf = first (toS . parseErrorPretty) . parseConf'
+parseConf = first (toS . parseErrorPretty) . parseConf' mempty
 
-type ParseResult = Either (ParseError Char Dec)
-
-parseConf' :: Text -> ParseResult [Conf]
-parseConf' = parse conf "" . (<> "\n")
-    -- comments and indentation-sensitive parsing wreak havoc if the
-    -- input doesn't end with a newline
+parseConf' :: KnownSymbols -> Text -> ParseResult [Conf]
+parseConf' = runParser conf
 
 
 ------------------------------------------------------------------------------
@@ -82,7 +93,7 @@ role = indentBlock $
         keyword "roles" *> indentSome role'
     <|> keyword "role" *> indentNone role'
   where
-    role' = ConfRole <$> word
+    role' = ConfRole <$> declareKnown roleText
 
 component :: Parser [Conf]
 component = indentBlock $
@@ -90,46 +101,53 @@ component = indentBlock $
     <|> keyword "component" *> indentNone component'
   where
     component' =
-        ConfComponent <$> word <*> word <*> option 0 duration <*> option 0 distance
+        ConfComponent <$> declareKnown componentText <*> word
+            <*> option 0 duration <*> option 0 distance
 
 bike :: Parser [Conf]
 bike = indentBlock $ do
-    b <- keyword "bike" *> word
+    b <- keyword "bike" *> bikeText -- TODO: check bike
     indentSome $
-        ConfLongterm <$> pure b <*> word <*> word <*> time <*> optional time
+        ConfLongterm <$> pure b
+            <*> checkKnown roleText
+            <*> checkKnown componentText
+            <*> time <*> optional time
 
 hashtag :: Parser [Conf]
 hashtag = indentBlock $ do
-    t <- keyword "hashtag" *> word
+    t <- keyword "hashtag" *> hashTagText
     indentSome $
-        ConfHashTag <$> pure t <*> word <*> word <*> time <*> optional time
+        ConfHashTag <$> pure t
+            <*> checkKnown roleText
+            <*> checkKnown componentText
+            <*> time <*> optional time
 
 
 ------------------------------------------------------------------------------
 -- Lexer
 
-lineComment :: Parser ()
+lineComment :: ParserT m ()
 lineComment = L.skipLineComment "--"
 
-scn :: Parser ()
+scn :: ParserT m ()
 scn = L.space (void spaceChar) lineComment empty
 
-lexeme :: Parser a -> Parser a
+lexeme :: ParserT m a -> ParserT m a
 lexeme = L.lexeme sc . followedBySpace
   where
     sc = L.space (void $ oneOf [' ', '\t']) lineComment empty
     followedBySpace = (<* (lookAhead (void spaceChar) <|> eof))
 
-keyword :: String -> Parser ()
+keyword :: String -> ParserT m ()
 keyword s = void $ lexeme $ string s
 
-word :: Parser Text
+word :: ParserT m Text
 word = lexeme $ toS <$> (stringLiteral <|> some c)
   where
     c = alphaNumChar <|> oneOf ['-','_','#']
     stringLiteral = char '"' >> manyTill L.charLiteral (char '"')
 
-duration :: Parser Int
+duration :: ParserT m Int
 duration = label "duration" $
     lexeme $ (*) <$> int <*> option 1 (hours <|> days)
   where
@@ -137,14 +155,14 @@ duration = label "duration" $
     hours = string "h" *> pure 3600
     days = string "d" *> pure 86400
 
-distance :: Parser Double
+distance :: ParserT m Double
 distance = label "distance" $
     lexeme $ (*) <$> double <*> option 1 kms
   where
     double = toRealFloat <$> L.number
     kms = string "km" *> pure 1000
 
-time :: Parser UTCTime
+time :: ParserT m UTCTime
 time = label "date/time" $ lexeme $ do
     s <- some c
     p Nothing s
@@ -155,20 +173,83 @@ time = label "date/time" $ lexeme $ do
     c = numberChar <|> oneOf ['T', 'Z', '+', '-', ':']
     p = parseTimeM False defaultTimeLocale . iso8601DateFormat
 
+hashTag :: ParserT m Text
+hashTag = lexeme $ toS <$> ((:) <$> char '#' <*> some c)
+  where
+    c = alphaNumChar <|> oneOf ['-','_','#']
+
+bikeText :: Parser BikeText
+bikeText = BikeText <$> word
+
+componentText :: Parser ComponentText
+componentText = ComponentText <$> word
+
+hashTagText :: Parser HashTagText
+hashTagText = HashTagText <$> hashTag
+
+roleText :: Parser RoleText
+roleText = RoleText <$> word
+
 
 ------------------------------------------------------------------------------
--- Helpers
+-- Indentation-sensitive helpers
 
-nonIndented :: Parser a -> Parser a
+nonIndented :: ParserT m a -> ParserT m a
 nonIndented = L.nonIndented scn
 
-indentBlock :: Parser (L.IndentOpt Parser a b) -> Parser a
+indentBlock :: ParserT m (L.IndentOpt (ParserT m) a b) -> ParserT m a
 indentBlock = L.indentBlock scn
 
-indentNone :: Parser a -> Parser (L.IndentOpt Parser [a] b)
+indentNone :: ParserT m a -> ParserT m (L.IndentOpt (ParserT m) [a] b)
 indentNone p = L.IndentNone <$> pure <$> p <* scn
     -- the "<* scn" belongs to L.indentBlock instead :-(
     -- (fixed in megaparsec 5.2.0)
 
-indentSome :: Parser a -> Parser (L.IndentOpt Parser [a] a)
+indentSome :: ParserT m a -> ParserT m (L.IndentOpt (ParserT m) [a] a)
 indentSome = pure . L.IndentSome Nothing pure
+
+
+------------------------------------------------------------------------------
+-- Parser monad
+
+type SymbolLike a = (Eq a, Ord a, Show a, Typeable a)
+data Symbol = forall a. SymbolLike a => Symbol a
+
+instance Eq Symbol where
+    Symbol a == Symbol b =
+        case cast a of
+            Just a' -> a' == b
+            Nothing -> False
+
+instance Ord Symbol where
+    Symbol a `compare` Symbol b =
+        case cast a of
+            Just a' -> a' `compare` b
+            Nothing -> typeRep (proxy a) `compare` typeRep (proxy b)
+      where
+        proxy :: a -> Proxy a
+        proxy _ = Proxy
+
+type KnownSymbols = Set Symbol
+
+declareKnown :: SymbolLike s => Parser s -> Parser s
+declareKnown s = do
+    x <- s
+    modify (<> S.singleton (Symbol x))
+    pure x
+
+checkKnown :: SymbolLike s => Parser s -> Parser s
+checkKnown s = do
+    x <- s
+    whenM (gets $ not . S.member (Symbol x)) $
+        fail $ "undeclared " <> show x
+    pure x
+
+type ParserT = ParsecT Dec Text
+type Parser = ParserT (State KnownSymbols)
+type ParseResult = Either (ParseError Char Dec)
+
+runParser :: Parser a -> KnownSymbols -> Text -> ParseResult a
+runParser p s = flip evalState s . runParserT p "" . (<> "\n")
+    -- comments and indentation-sensitive parsing wreak havoc if the
+    -- input doesn't end with a newline

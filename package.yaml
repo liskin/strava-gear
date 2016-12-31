@@ -50,9 +50,12 @@ tests:
         main: hspec.hs
         source-dirs: test
         dependencies:
+            - containers
             - hspec
             - hspec-megaparsec
+            - megaparsec
             - strava-gear
+            - time
         ghc-options:
             - -threaded
 
