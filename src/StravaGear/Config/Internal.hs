@@ -1,7 +1,3 @@
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE GADTs #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module StravaGear.Config.Internal
@@ -9,9 +5,9 @@ module StravaGear.Config.Internal
     , parseConf
 
     -- * testing
-    , Symbol(..)
     , parseConf'
     , time
+    , toSymbol
     )
   where
 
@@ -212,36 +208,27 @@ indentSome = pure . L.IndentSome Nothing pure
 ------------------------------------------------------------------------------
 -- Parser monad
 
-type SymbolLike a = (Eq a, Ord a, Show a, Typeable a)
-data Symbol = forall a. SymbolLike a => Symbol a
+data Symbol
+    = SymbolRole RoleText
+    | SymbolComponent ComponentText
+  deriving (Eq, Ord, Show)
 
-instance Eq Symbol where
-    Symbol a == Symbol b =
-        case cast a of
-            Just a' -> a' == b
-            Nothing -> False
-
-instance Ord Symbol where
-    Symbol a `compare` Symbol b =
-        case cast a of
-            Just a' -> a' `compare` b
-            Nothing -> typeRep (proxy a) `compare` typeRep (proxy b)
-      where
-        proxy :: a -> Proxy a
-        proxy _ = Proxy
+class Show a => SymbolLike a where toSymbol :: a -> Symbol
+instance SymbolLike RoleText where toSymbol = SymbolRole
+instance SymbolLike ComponentText where toSymbol = SymbolComponent
 
 type KnownSymbols = Set Symbol
 
 declareKnown :: SymbolLike s => Parser s -> Parser s
 declareKnown s = do
     x <- s
-    modify (<> S.singleton (Symbol x))
+    modify (<> S.singleton (toSymbol x))
     pure x
 
 checkKnown :: SymbolLike s => Parser s -> Parser s
 checkKnown s = do
     x <- s
-    whenM (gets $ not . S.member (Symbol x)) $
+    whenM (gets $ not . S.member (toSymbol x)) $
         fail $ "undeclared " <> show x
     pure x
 

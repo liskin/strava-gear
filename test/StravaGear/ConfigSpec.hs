@@ -10,11 +10,7 @@ import Test.Hspec
 import Test.Hspec.Megaparsec
 import Text.Megaparsec (parse)
 
-import StravaGear.Config.Internal
-    ( Conf(..)
-    , Symbol(..)
-    , parseConf', time
-    )
+import StravaGear.Config.Internal (Conf(..), parseConf', time, toSymbol)
 import StravaGear.Types (ComponentText(..), RoleText(..))
 
 spec :: Spec
@@ -79,8 +75,8 @@ spec_conf = describe "parseConf'" $ do
   where
     t0 = UTCTime (fromGregorian 2016 1 1) 0
     known = S.fromList
-        [ Symbol (RoleText "chain")
-        , Symbol (ComponentText "c1")
+        [ toSymbol (RoleText "chain")
+        , toSymbol (ComponentText "c1")
         ]
 
 spec_time :: Spec
