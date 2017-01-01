@@ -1,7 +1,6 @@
 module StravaGear.Report
     ( bikesReport
     , componentReport
-    , report
     )
   where
 
@@ -32,28 +31,16 @@ import Database.Esqueleto
     )
 import Database.Persist (Entity(Entity), PersistField)
 import Database.Persist.Sql (SqlPersistM)
-import Database.Persist.Sqlite (runSqlite)
 import qualified Text.Tabular as Tab
     ( Header(Group, Header)
     , Properties(DoubleLine, NoLine, SingleLine)
     , Table(Table)
     )
-import qualified Text.Tabular.AsciiArt as Tab (render)
 
 import StravaGear.Database.Schema
 import StravaGear.Database.Utils (castToPersistValue)
 import StravaGear.Types (fromComponent, fromRole)
 
-
-report :: Text -> IO ()
-report fileName = do
-    runSqlite fileName $ do
-        tab1 <- componentReport
-        tab2 <- bikesReport
-        liftIO $ do
-            putStr $ Tab.render identity identity identity tab1
-            putStrLn ""
-            putStr $ Tab.render identity identity identity tab2
 
 componentReport :: SqlPersistM (Tab.Table String String String)
 componentReport = do

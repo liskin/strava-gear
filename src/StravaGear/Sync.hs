@@ -42,10 +42,9 @@ import Database.Persist
     , selectList
     )
 import Database.Persist.Sql (SqlPersistM, runMigration)
-import Database.Persist.Sqlite (runSqlite)
 import qualified Strive as S
 
-import StravaGear.Config (Conf(..), parseConf)
+import StravaGear.Config (Conf(..))
 import StravaGear.Database.Schema
 import StravaGear.Database.Utils
 import StravaGear.Types
@@ -54,24 +53,18 @@ import StravaGear.Types
     )
 
 
-sync :: Bool -> S.Client -> IO Text
-sync forceFetch client = do
-    Right athlete <- S.getCurrentAthlete client
-    let athleteId = S.id `S.get` athlete :: Integer
-        athleteBikes = S.bikes `S.get` athlete
-        sqliteFileName = "athlete_" ++ show athleteId ++ ".sqlite"
-        confFileName = "athlete_" ++ show athleteId ++ ".conf"
-    conf <- readFile confFileName
-    runSqlite (toS sqliteFileName) $ do
-        runMigration migrateAll
-        bUpsert <- syncBikes athleteBikes
-        aUpsert <- syncActivities forceFetch client
-        (cUpsert, rUpsert, lUpsert, hUpsert) <- syncConfig conf
-        let changed = (bUpsert, aUpsert, cUpsert, rUpsert, lUpsert, hUpsert)
-        let newActs = activitiesToRefresh changed
-        syncHashTags newActs
-        syncActivitiesComponents newActs
-    return $ toS sqliteFileName
+sync :: Bool -> [Conf] -> S.Client -> SqlPersistM ()
+sync forceFetch conf client = do
+    Right athlete <- liftIO $ S.getCurrentAthlete client
+    let athleteBikes = S.bikes `S.get` athlete
+    runMigration migrateAll
+    bUpsert <- syncBikes athleteBikes
+    aUpsert <- syncActivities forceFetch client
+    (cUpsert, rUpsert, lUpsert, hUpsert) <- syncConfig conf
+    let changed = (bUpsert, aUpsert, cUpsert, rUpsert, lUpsert, hUpsert)
+    let newActs = activitiesToRefresh changed
+    syncHashTags newActs
+    syncActivitiesComponents newActs
 
 type WhatChanged =
     ( [UpsertResult Bike]
@@ -227,12 +220,15 @@ activitiesHashtagComponents new = do
                , h ^. HashTagBikeComponentComponent
                , h ^. HashTagBikeComponentRole)
 
-syncConfig :: Text -> SqlPersistM ( [UpsertResult Component]
-                                  , [UpsertResult ComponentRole]
-                                  , [UpsertResult LongtermBikeComponent]
-                                  , [UpsertResult HashTagBikeComponent] )
-syncConfig conf = do
-    let Right cs = parseConf conf
+syncConfig
+    :: [Conf]
+    -> SqlPersistM
+        ( [UpsertResult Component]
+        , [UpsertResult ComponentRole]
+        , [UpsertResult LongtermBikeComponent]
+        , [UpsertResult HashTagBikeComponent]
+        )
+syncConfig cs = do
     components <- syncEntitiesDel
         [ Component c n dur dist | ConfComponent c n dur dist <- cs ]
     roles <- syncEntitiesDel
@@ -262,7 +258,7 @@ syncConfig conf = do
     m ! v = unsafePerformIO $ try (evaluate (m Map.! v)) >>= \case
         Right x -> return x
         Left e ->
-            panic . toS $ show m ++ " ! " ++ show v ++ ": " ++ show (e :: SomeException)
+            panic $ show m <> " ! " <> show v <> ": " <> show (e :: SomeException)
 
 distinctUsing :: (Ord b) => (a -> b) -> [a] -> [a]
 distinctUsing f = go Set.empty
