@@ -140,7 +140,7 @@ keyword s = void $ lexeme $ string s
 word :: ParserT m Text
 word = lexeme $ toS <$> (stringLiteral <|> some c)
   where
-    c = alphaNumChar <|> oneOf ['-','_','#']
+    c = alphaNumChar <|> oneOf ['-','_']
     stringLiteral = char '"' >> manyTill L.charLiteral (char '"')
 
 duration :: ParserT m Int
