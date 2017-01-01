@@ -13,6 +13,7 @@ module Main.Web (main) where
 import Protolude hiding ((<>), link)
 
 import Data.Monoid ((<>))
+import Data.String (String)
 
 import Database.Persist.Sql (SqlPersistM, runMigration)
 import Database.Persist.Sqlite (runSqlite)
@@ -51,6 +52,9 @@ import System.FilePath (addTrailingPathSeparator)
 import Text.Blaze.Html5 (Markup)
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as HA
+import qualified Text.Html as H2
+import qualified Text.Tabular as Tab (Table)
+import qualified Text.Tabular.Html as Tab (render)
 
 import Config as Config (clientId, clientSecret, url)
 import Main.Web.Auth
@@ -58,6 +62,7 @@ import Main.Web.Utils
 import StravaGear.Config (Conf, parseConf)
 import StravaGear.Config.Sample (sampleConfig)
 import StravaGear.Database.Schema (migrateAll)
+import StravaGear.Report (componentReport, bikesReport)
 import StravaGear.Sync (SyncStravaRes, syncConfig, syncStrava)
 
 
@@ -103,23 +108,14 @@ homeApi :: Proxy HomeApi
 homeApi = Proxy
 
 serveHome :: CfgBaseUri => Server HomeApi
-serveHome = pure . H.docTypeHtml $ do
-    H.head $ do
-        H.title "strava-gear"
-        H.meta H.! HA.name "viewport" H.! HA.content "width=device-width, initial-scale=1"
-        H.link H.! HA.rel "stylesheet" H.! HA.href "static/normalize.css"
-        H.link H.! HA.rel "stylesheet" H.! HA.href "static/skeleton.css"
-        H.link H.! HA.rel "stylesheet" H.! HA.href "static/custom.css"
+serveHome = pure homePage
 
-    H.body $ H.div H.! HA.class_ "container" $ do
-        H.section H.! HA.class_ "header" $ do
-            H.h1 "strava-gear"
-            H.p "Lorem ipsum..."
-            loginButton
-
-        H.hr
-        H.div H.! HA.class_ "u-pull-left" $ stravaLink
-        H.div H.! HA.class_ "u-pull-right" $ githubLink
+homePage :: CfgBaseUri => Markup
+homePage = html (H.title "strava-gear: Home") $ do
+    H.section H.! HA.class_ "header" $ do
+        H.h1 "strava-gear"
+        H.p "Lorem ipsum..."
+        loginButton
 
 loginButton :: CfgBaseUri => Markup
 loginButton = H.a H.! HA.href link $ imgConnect
@@ -160,24 +156,33 @@ serveTest Auth{..} = pure . H.docTypeHtml $ do
 
 type ApiApi
     =    "config" :> ConfigApi
-    :<|> "config" :> "check" :> ConfigCheckApi
-    :<|> "config" :> "sample" :> ConfigSampleApi
     :<|> "sync" :> SyncApi
+    :<|> "report" :> ReportApi
 
 serveApi :: Auth -> Server ApiApi
 serveApi auth
     =    serveConfigApi auth
+    :<|> serveSyncApi auth
+    :<|> serveReportApi auth
+
+type ConfigApi =
+         ConfigPostApi
+    :<|> "check" :> ConfigCheckApi
+    :<|> "sample" :> ConfigSampleApi
+
+serveConfigApi :: Auth -> Server ConfigApi
+serveConfigApi auth
+    =    serveConfigPostApi auth
     :<|> serveConfigCheckApi auth
     :<|> serveConfigSampleApi auth
-    :<|> serveSyncApi auth
 
 -- TODO: get stored config
-type ConfigApi
+type ConfigPostApi
     =  ReqBody '[PlainText] Text
     :> PostNoContent '[PlainText] NoContent
 
-serveConfigApi :: Auth -> Server ConfigApi
-serveConfigApi auth conf =
+serveConfigPostApi :: Auth -> Server ConfigPostApi
+serveConfigPostApi auth conf =
     withConfig conf $ \cfg ->
         withClient auth $ \_client ->
             -- TODO: store config somewhere
@@ -210,6 +215,60 @@ serveSyncApi :: Auth -> Server SyncApi
 serveSyncApi auth = withClient auth . syncStrava
     -- TODO: store last sync time and perhaps perform full sync once a week
     -- or something?
+
+type ReportApi
+    =    "components" :> ReportComponentsApi
+    :<|> "bikes" :> ReportBikesApi
+
+serveReportApi :: Auth -> Server ReportApi
+serveReportApi auth
+    =    serveReportComponentsApi auth
+    :<|> serveReportBikesApi auth
+
+-- TODO: additional content types
+type ReportComponentsApi = Get '[HTML] Markup
+
+serveReportComponentsApi :: Auth -> Server ReportComponentsApi
+serveReportComponentsApi auth =
+    tablePage "Components report" <$> withClient auth (const componentReport)
+
+-- TODO: additional content types
+type ReportBikesApi = Get '[HTML] Markup
+
+serveReportBikesApi :: Auth -> Server ReportBikesApi
+serveReportBikesApi auth =
+    tablePage "Bikes report" <$> withClient auth (const bikesReport)
+
+tableToMarkup :: Tab.Table String String String -> Markup
+tableToMarkup = H.preEscapedToMarkup . renderHtml
+    . Tab.render H2.stringToHtml H2.stringToHtml H2.stringToHtml
+  where
+    renderHtml h = foldr (.) identity (render h) "\n"
+    render = map (H2.renderHtml' 0) . H2.getHtmlElements
+
+tablePage :: Text -> Tab.Table String String String -> Markup
+tablePage title tab = html (H.title $ H.text $ "strava-gear: " <> title) $ do
+    H.section H.! HA.class_ "header" $ do
+        H.h1 $ H.text title
+
+    tableToMarkup tab
+
+html :: Markup -> Markup -> Markup
+html h container = H.docTypeHtml $ do
+    H.head $ do
+        h
+        H.base H.! HA.href (H.stringValue Config.url)
+        H.meta H.! HA.name "viewport" H.! HA.content "width=device-width, initial-scale=1"
+        H.link H.! HA.rel "stylesheet" H.! HA.href "static/normalize.css"
+        H.link H.! HA.rel "stylesheet" H.! HA.href "static/skeleton.css"
+        H.link H.! HA.rel "stylesheet" H.! HA.href "static/custom.css"
+
+    H.body $ H.div H.! HA.class_ "container" $ do
+        container
+
+        H.hr
+        H.div H.! HA.class_ "u-pull-left" $ stravaLink
+        H.div H.! HA.class_ "u-pull-right" $ githubLink
 
 withClient :: Auth -> (S.Client -> SqlPersistM a) -> Handler a
 withClient Auth{..} f =

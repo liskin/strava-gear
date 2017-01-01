@@ -27,6 +27,7 @@ library:
         - esqueleto
         - exceptions
         - filepath
+        - html
         - megaparsec >=5 && <5.2
         - network-uri
         - persistent
