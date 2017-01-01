@@ -15,6 +15,7 @@ import Protolude hiding ((<>), link)
 import Data.Monoid ((<>))
 import Data.String (String)
 
+import Data.Aeson (ToJSON(toJSON))
 import Database.Persist.Sql (SqlPersistM, runMigration)
 import Database.Persist.Sqlite (runSqlite)
 import Network.Wai.Application.Static
@@ -53,7 +54,7 @@ import Text.Blaze.Html5 (Markup)
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as HA
 import qualified Text.Html as H2
-import qualified Text.Tabular as Tab (Table)
+import qualified Text.Tabular as Tab (Table(Table), headerContents)
 import qualified Text.Tabular.Html as Tab (render)
 
 import Config as Config (clientId, clientSecret, url)
@@ -225,19 +226,27 @@ serveReportApi auth
     =    serveReportComponentsApi auth
     :<|> serveReportBikesApi auth
 
--- TODO: additional content types
-type ReportComponentsApi = Get '[HTML] Markup
+data Report = Report !Text !(Tab.Table String String String)
+
+instance ToJSON Report where
+    toJSON (Report _ (Tab.Table rh ch t)) =
+        -- TODO: use a meaningful representation
+        toJSON (Tab.headerContents rh, Tab.headerContents ch, t)
+
+instance H.ToMarkup Report where
+    toMarkup (Report title tab) = tablePage title tab
+
+type ReportComponentsApi = Get '[HTML, JSON] Report
 
 serveReportComponentsApi :: Auth -> Server ReportComponentsApi
 serveReportComponentsApi auth =
-    tablePage "Components report" <$> withClient auth (const componentReport)
+    Report "Components report" <$> withClient auth (const componentReport)
 
--- TODO: additional content types
-type ReportBikesApi = Get '[HTML] Markup
+type ReportBikesApi = Get '[HTML, JSON] Report
 
 serveReportBikesApi :: Auth -> Server ReportBikesApi
 serveReportBikesApi auth =
-    tablePage "Bikes report" <$> withClient auth (const bikesReport)
+    Report "Bikes report" <$> withClient auth (const bikesReport)
 
 tableToMarkup :: Tab.Table String String String -> Markup
 tableToMarkup = H.preEscapedToMarkup . renderHtml
