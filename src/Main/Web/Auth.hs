@@ -101,8 +101,8 @@ withAuthCookies f = do
 type CfgAuth = (CfgStrive, CfgBaseUri, CfgAuthCookies)
 
 data Auth = Auth
-    { authToken :: Text
-    , authAthlete :: Integer
+    { authToken :: !Text
+    , authAthlete :: !Integer
     }
   deriving (Show, Eq, Generic, Serialize)
 

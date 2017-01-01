@@ -51,6 +51,7 @@ tests:
         source-dirs: test
         dependencies:
             - containers
+            - heredoc
             - hspec
             - hspec-megaparsec
             - megaparsec

@@ -58,10 +58,10 @@ import StravaGear.Types
 
 
 data Conf
-    = ConfComponent ComponentText Text Int Double
-    | ConfRole RoleText
-    | ConfLongterm BikeText RoleText ComponentText UTCTime (Maybe UTCTime)
-    | ConfHashTag HashTagText RoleText ComponentText UTCTime (Maybe UTCTime)
+    = ConfComponent !ComponentText !Text !Int !Double
+    | ConfRole !RoleText
+    | ConfLongterm !BikeText !RoleText !ComponentText !UTCTime !(Maybe UTCTime)
+    | ConfHashTag !HashTagText !RoleText !ComponentText !UTCTime !(Maybe UTCTime)
   deriving (Eq, Ord, Show)
 
 parseConf :: Text -> Either Text [Conf]
@@ -209,8 +209,8 @@ indentSome = pure . L.IndentSome Nothing pure
 -- Parser monad
 
 data Symbol
-    = SymbolRole RoleText
-    | SymbolComponent ComponentText
+    = SymbolRole !RoleText
+    | SymbolComponent !ComponentText
   deriving (Eq, Ord, Show)
 
 class Show a => SymbolLike a where toSymbol :: a -> Symbol
