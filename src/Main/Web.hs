@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -9,8 +10,12 @@
 
 module Main.Web (main) where
 
-import Protolude hiding (link)
+import Protolude hiding ((<>), link)
 
+import Data.Monoid ((<>))
+
+import Database.Persist.Sql (SqlPersistM)
+import Database.Persist.Sqlite (runSqlite)
 import Network.Wai.Application.Static
     ( defaultWebAppSettings
     , staticApp
@@ -22,16 +27,23 @@ import Servant
     , Application
     , Context((:.), EmptyContext)
     , Get
+    , Handler
     , HasLink
     , IsElem
     , MkLink
+    , NoContent(NoContent)
+    , PlainText
+    , PostNoContent
     , Raw
+    , ReqBody
     , Server
+    , err400
+    , errBody
     , safeLink
     , serveWithContext
     )
 import Servant.HTML.Blaze (HTML)
---import qualified Strive as S
+import qualified Strive as S (Client, buildClient)
 import System.FilePath (addTrailingPathSeparator)
 import Text.Blaze.Html5 (Markup)
 import qualified Text.Blaze.Html5 as H
@@ -40,6 +52,8 @@ import qualified Text.Blaze.Html5.Attributes as HA
 import Config as Config (clientId, clientSecret, url)
 import Main.Web.Auth
 import Main.Web.Utils
+import StravaGear.Config (Conf, parseConf)
+import StravaGear.Config.Sample (sampleConfig)
 
 
 main :: IO ()
@@ -56,10 +70,11 @@ app = serveWithContext api ctx serve
     ctx = cookieAuthHandler :. EmptyContext
 
 type Api
-    = HomeApi
+    =    HomeApi
     :<|> StaticApi
     :<|> LoginApi
     :<|> "test" :> TestApi
+    :<|> "api" :> CookieAuthProtect :> ApiApi
 
 api :: Proxy Api
 api = Proxy
@@ -68,10 +83,12 @@ apiLink :: (IsElem e Api, HasLink e) => Proxy e -> MkLink e
 apiLink = safeLink api
 
 serve :: (CfgAuth) => Server Api
-serve = serveHome
+serve
+    =    serveHome
     :<|> serveStatic
     :<|> serveLogin
     :<|> serveTest
+    :<|> serveApi
   where
     serveLogin = serveStriveLogin api homeApi
 
@@ -120,9 +137,6 @@ imgConnect = H.img H.! HA.src "static/btn_strava_connectwith_orange.png"
 
 type StaticApi = "static" :> Raw
 
---staticApi :: Proxy StaticApi
---staticApi = Proxy
-
 serveStatic :: Server StaticApi
 serveStatic = serveDirectory "static"
 
@@ -139,4 +153,48 @@ serveTest Auth{..} = pure . H.docTypeHtml $ do
         H.p $ "token: " <> H.text authToken
         H.p $ "athlete: " <> H.string (show authAthlete)
 
-instance Semigroup Markup
+type ApiApi
+    =    "config" :> ConfigApi
+    :<|> "config" :> "check" :> ConfigCheckApi
+    :<|> "config" :> "sample" :> ConfigSampleApi
+
+serveApi :: Auth -> Server ApiApi
+serveApi auth
+    =    serveConfigApi auth
+    :<|> serveConfigCheckApi auth
+    :<|> serveConfigSampleApi auth
+
+type ConfigApi
+    =  ReqBody '[PlainText] Text
+    :> PostNoContent '[PlainText] NoContent
+
+serveConfigApi :: Auth -> Server ConfigApi
+serveConfigApi auth conf =
+    withConfig conf $ \_cfg ->
+        withClient auth $ \_client ->
+            -- syncConfig cfg
+            notImplemented
+
+type ConfigCheckApi
+    =  ReqBody '[PlainText] Text
+    :> PostNoContent '[PlainText] NoContent
+
+serveConfigCheckApi :: Auth -> Server ConfigCheckApi
+serveConfigCheckApi _auth conf =
+    withConfig conf $ const $ pure NoContent
+
+withConfig :: Text -> ([Conf] -> Handler a) -> Handler a
+withConfig c f = either e f $ parseConf c
+  where
+    e msg = throwError err400{ errBody = toS msg }
+
+type ConfigSampleApi = Get '[PlainText] Text
+
+serveConfigSampleApi :: Auth -> Server ConfigSampleApi
+serveConfigSampleApi auth =
+    withClient auth $ const sampleConfig
+
+withClient :: Auth -> (S.Client -> SqlPersistM a) -> Handler a
+withClient Auth{..} f =
+    liftIO . runSqlite ("athlete_" <> show authAthlete <> ".sqlite") $
+        liftIO (S.buildClient (Just authToken)) >>= f
