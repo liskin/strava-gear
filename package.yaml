@@ -16,6 +16,7 @@ ghc-options:
 library:
     source-dirs: src
     dependencies:
+        - aeson
         - blaze-html
         - bytestring
         - cereal

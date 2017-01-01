@@ -1,9 +1,13 @@
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module StravaGear.Sync
-    ( sync
+    ( SyncStravaRes(..)
+    , syncConfig
+    , syncStrava
     )
   where
 
@@ -14,6 +18,7 @@ import qualified Data.Map as Map ((!), fromList)
 import qualified Data.Set as Set (empty, insert, member)
 import System.IO.Unsafe (unsafePerformIO)
 
+import Data.Aeson (ToJSON)
 import Data.Text (isPrefixOf, words)
 import Data.Time (UTCTime, getCurrentTime)
 import Database.Esqueleto
@@ -38,10 +43,9 @@ import Database.Persist
     , entityKey
     , entityVal
     , selectFirst
-    , selectKeysList
     , selectList
     )
-import Database.Persist.Sql (SqlPersistM, runMigration)
+import Database.Persist.Sql (SqlPersistM)
 import qualified Strive as S
 
 import StravaGear.Config (Conf(..))
@@ -53,54 +57,45 @@ import StravaGear.Types
     )
 
 
-sync :: Bool -> [Conf] -> S.Client -> SqlPersistM ()
-sync forceFetch conf client = do
-    Right athlete <- liftIO $ S.getCurrentAthlete client
-    let athleteBikes = S.bikes `S.get` athlete
-    runMigration migrateAll
-    bUpsert <- syncBikes athleteBikes
+data SyncStravaRes = SyncStravaRes
+    { updatedBikes :: !Int
+    , updatedActivities :: !Int
+    }
+  deriving (Generic, ToJSON)
+
+syncStrava :: Bool -> S.Client -> SqlPersistM SyncStravaRes
+syncStrava forceFetch client = do
+    bUpsert <- syncBikes client
     aUpsert <- syncActivities forceFetch client
-    (cUpsert, rUpsert, lUpsert, hUpsert) <- syncConfig conf
-    let changed = (bUpsert, aUpsert, cUpsert, rUpsert, lUpsert, hUpsert)
-    let newActs = activitiesToRefresh changed
+    let newActs = activitiesToRefresh (bUpsert, aUpsert)
     syncHashTags newActs
     syncActivitiesComponents newActs
+    pure $ SyncStravaRes
+        { updatedBikes = length $ changedEntities bUpsert
+        , updatedActivities = length $ changedEntities aUpsert
+        }
 
-type WhatChanged =
-    ( [UpsertResult Bike]
-    , [UpsertResult Activity]
-    , [UpsertResult Component]
-    , [UpsertResult ComponentRole]
-    , [UpsertResult LongtermBikeComponent]
-    , [UpsertResult HashTagBikeComponent] )
+activitiesToRefresh
+    :: ([UpsertResult Bike], [UpsertResult Activity])
+    -> Maybe [Key Activity]
+activitiesToRefresh (bUpsert, aUpsert) =
+    case (changedEntities bUpsert, changedEntities aUpsert) of
+        ([], ch) | length ch < 100 {- damn sqlite :-/ -} -> Just ch
+        _ -> Nothing
 
-activitiesToRefresh :: WhatChanged -> Maybe [Key Activity]
-activitiesToRefresh (bUpsert, aUpsert, cUpsert, rUpsert, lUpsert, hUpsert) =
-    case onlyNoop bUpsert && confNoop of
-        True -> case changedEntities aUpsert of
-            ch | length ch < 100 -> Just ch
-               | otherwise -> Nothing -- damn sqlite :-/
-        False -> Nothing
-    where
-        isNoop (UpsertNoop _) = True
-        isNoop _ = False
-        onlyNoop = null . filter (not . isNoop)
-        confNoop = onlyNoop cUpsert && onlyNoop rUpsert
-                && onlyNoop lUpsert && onlyNoop hUpsert
-
-syncBikes :: [S.GearSummary] -> SqlPersistM [UpsertResult Bike]
-syncBikes bikes = syncEntitiesDel $ map bike bikes
-    where bike b = Bike (S.name `S.get` b) (BikeText $ S.id `S.get` b)
+syncBikes :: S.Client -> SqlPersistM [UpsertResult Bike]
+syncBikes client = do
+    Right athlete <- liftIO $ S.getCurrentAthlete client
+    syncEntitiesDel $ map bike $ S.bikes `S.get` athlete
+  where
+    bike b = Bike (S.name `S.get` b) (BikeText $ S.id `S.get` b)
 
 syncActivities :: Bool -> S.Client -> SqlPersistM [UpsertResult Activity]
 syncActivities forceFetch client = do
     fetchRes <- fetchActivitiesFast forceFetch client
     case fetchRes of
-        Nothing ->
-            fmap (map $ \k -> UpsertNoop (Entity k undefined)) $
-                selectKeysList [] []
-        Just acts ->
-            syncEntitiesDel $ map act acts
+        Nothing -> pure mempty
+        Just acts -> syncEntitiesDel $ map act acts
     where
         act a = Activity
             { activityStravaId = fromIntegral $ S.id `S.get` a
@@ -220,14 +215,7 @@ activitiesHashtagComponents new = do
                , h ^. HashTagBikeComponentComponent
                , h ^. HashTagBikeComponentRole)
 
-syncConfig
-    :: [Conf]
-    -> SqlPersistM
-        ( [UpsertResult Component]
-        , [UpsertResult ComponentRole]
-        , [UpsertResult LongtermBikeComponent]
-        , [UpsertResult HashTagBikeComponent]
-        )
+syncConfig :: [Conf] -> SqlPersistM ()
 syncConfig cs = do
     components <- syncEntitiesDel
         [ Component c n dur dist | ConfComponent c n dur dist <- cs ]
@@ -252,7 +240,14 @@ syncConfig cs = do
     hashtags <- syncEntitiesDel
         [ HashTagBikeComponent (tagMap ! t) (componentMap ! c) (roleMap ! r) s e
         | ConfHashTag t r c s e <- cs ]
-    return (components, roles, longterms, hashtags)
+
+    let noop = null (changedEntities components)
+            && null (changedEntities roles)
+            && null (changedEntities longterms)
+            && null (changedEntities hashtags)
+    unless noop $ do
+        syncHashTags Nothing
+        syncActivitiesComponents Nothing
   where
     (!) :: (Ord k, Show k, Show a) => Map k a -> k -> a
     m ! v = unsafePerformIO $ try (evaluate (m Map.! v)) >>= \case

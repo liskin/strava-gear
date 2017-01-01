@@ -4,7 +4,7 @@
 {-# LANGUAGE TypeFamilies #-}
 
 module StravaGear.Database.Utils
-    ( UpsertResult(..)
+    ( UpsertResult
     , castToPersistValue
     , changedEntities
     , keptEntities

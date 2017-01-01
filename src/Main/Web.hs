@@ -14,7 +14,7 @@ import Protolude hiding ((<>), link)
 
 import Data.Monoid ((<>))
 
-import Database.Persist.Sql (SqlPersistM)
+import Database.Persist.Sql (SqlPersistM, runMigration)
 import Database.Persist.Sqlite (runSqlite)
 import Network.Wai.Application.Static
     ( defaultWebAppSettings
@@ -30,10 +30,13 @@ import Servant
     , Handler
     , HasLink
     , IsElem
+    , JSON
     , MkLink
     , NoContent(NoContent)
     , PlainText
+    , Post
     , PostNoContent
+    , QueryFlag
     , Raw
     , ReqBody
     , Server
@@ -54,6 +57,8 @@ import Main.Web.Auth
 import Main.Web.Utils
 import StravaGear.Config (Conf, parseConf)
 import StravaGear.Config.Sample (sampleConfig)
+import StravaGear.Database.Schema (migrateAll)
+import StravaGear.Sync (SyncStravaRes, syncConfig, syncStrava)
 
 
 main :: IO ()
@@ -157,23 +162,26 @@ type ApiApi
     =    "config" :> ConfigApi
     :<|> "config" :> "check" :> ConfigCheckApi
     :<|> "config" :> "sample" :> ConfigSampleApi
+    :<|> "sync" :> SyncApi
 
 serveApi :: Auth -> Server ApiApi
 serveApi auth
     =    serveConfigApi auth
     :<|> serveConfigCheckApi auth
     :<|> serveConfigSampleApi auth
+    :<|> serveSyncApi auth
 
+-- TODO: get stored config
 type ConfigApi
     =  ReqBody '[PlainText] Text
     :> PostNoContent '[PlainText] NoContent
 
 serveConfigApi :: Auth -> Server ConfigApi
 serveConfigApi auth conf =
-    withConfig conf $ \_cfg ->
+    withConfig conf $ \cfg ->
         withClient auth $ \_client ->
-            -- syncConfig cfg
-            notImplemented
+            -- TODO: store config somewhere
+            pure NoContent <* syncConfig cfg
 
 type ConfigCheckApi
     =  ReqBody '[PlainText] Text
@@ -194,7 +202,17 @@ serveConfigSampleApi :: Auth -> Server ConfigSampleApi
 serveConfigSampleApi auth =
     withClient auth $ const sampleConfig
 
+type SyncApi
+    =  QueryFlag "full"
+    :> Post '[JSON] SyncStravaRes
+
+serveSyncApi :: Auth -> Server SyncApi
+serveSyncApi auth = withClient auth . syncStrava
+    -- TODO: store last sync time and perhaps perform full sync once a week
+    -- or something?
+
 withClient :: Auth -> (S.Client -> SqlPersistM a) -> Handler a
 withClient Auth{..} f =
-    liftIO . runSqlite ("athlete_" <> show authAthlete <> ".sqlite") $
+    liftIO . runSqlite ("athlete_" <> show authAthlete <> ".sqlite") $ do
+        runMigration migrateAll
         liftIO (S.buildClient (Just authToken)) >>= f
