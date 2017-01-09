@@ -63,14 +63,16 @@ tests:
             - -threaded
 
 executables:
+    &default_executable
+    dependencies: [strava-gear]
+    ghc-options:
+        - -threaded
+
+executables:
     strava-gear-cmdline:
+        <<: *default_executable
         main: strava-gear-cmdline.hs
-        dependencies: [strava-gear]
-        ghc-options:
-            - -threaded
 
     strava-gear-web:
+        <<: *default_executable
         main: strava-gear-web.hs
-        dependencies: [strava-gear]
-        ghc-options:
-            - -threaded
