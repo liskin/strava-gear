@@ -197,9 +197,7 @@ indentBlock :: ParserT m (L.IndentOpt (ParserT m) a b) -> ParserT m a
 indentBlock = L.indentBlock scn
 
 indentNone :: ParserT m a -> ParserT m (L.IndentOpt (ParserT m) [a] b)
-indentNone p = L.IndentNone <$> pure <$> p <* scn
-    -- the "<* scn" belongs to L.indentBlock instead :-(
-    -- (fixed in megaparsec 5.2.0)
+indentNone p = L.IndentNone <$> pure <$> p
 
 indentSome :: ParserT m a -> ParserT m (L.IndentOpt (ParserT m) [a] a)
 indentSome = pure . L.IndentSome Nothing pure
@@ -237,6 +235,4 @@ type Parser = ParserT (State KnownSymbols)
 type ParseResult = Either (ParseError Char Dec)
 
 runParser :: Parser a -> KnownSymbols -> Text -> ParseResult a
-runParser p s = flip evalState s . runParserT p "" . (<> "\n")
-    -- comments and indentation-sensitive parsing wreak havoc if the
-    -- input doesn't end with a newline
+runParser p s = flip evalState s . runParserT p ""

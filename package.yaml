@@ -28,7 +28,7 @@ library:
         - exceptions
         - filepath
         - html
-        - megaparsec >=5 && <5.2
+        - megaparsec >=5.2
         - network-uri
         - persistent
         - persistent-sqlite
