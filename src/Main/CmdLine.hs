@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Main.CmdLine (main) where
@@ -29,7 +30,9 @@ main = do
     let sqliteFileName = "athlete_" <> show athleteId <> ".sqlite"
     let confFileName = "athlete_" <> show athleteId <> ".conf"
 
-    Right conf <- parseConf <$> readFile confFileName
+    conf <- parseConf <$> readFile confFileName >>= \case
+        Right conf -> pure conf
+        Left e -> panic e
     runSqlite sqliteFileName $ do
         runMigration migrateAll
         void $ syncStrava False client
