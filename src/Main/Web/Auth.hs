@@ -16,6 +16,7 @@ module Main.Web.Auth
     , CfgAuth
     , CookieAuthProtect
     , LoginApi
+    , WithMetadata(..)
     , cookieAuthHandler
     , loginApi
     , serveStriveLogin
@@ -33,21 +34,20 @@ import Crypto.Random (drgNew)
 import Data.Default (def)
 import Data.Serialize (Serialize)
 import Data.Serialize.Text ()
-import Network.URI (URI)
 import Network.Wai (Request)
 import Servant
     ( (:>)
     , AuthProtect
     , HasLink
-    , Header
-    , Headers
     , IsElem
+    , Link
     , MkLink
     , PlainText
     , QueryParam
     , Server
-    , addHeader
     , err403
+    , linkURI
+    , noHeader
     , safeLink
     , throwError
     )
@@ -59,12 +59,14 @@ import Servant.Server.Experimental.Auth.Cookie
     ( AuthCookieData
     , AuthCookieException
     , AuthCookieSettings
+    , Cookied
+    , PersistentServerKey
     , RandomSource
-    , ServerKey
+    , WithMetadata(..)
     , addSession
     , getSession
     , mkRandomSource
-    , mkServerKey
+    , mkPersistentServerKey
     )
 import qualified Strive as S
 
@@ -75,7 +77,8 @@ type CfgStravaAppId = ?stravaAppId :: S.ApplicationId
 type CfgStravaAppSecret = ?stravaAppSecret :: S.ApplicationSecret
 type CfgAuthCookieSettings = ?authCookieSettings :: AuthCookieSettings
 type CfgRandomSource = ?randomSource :: RandomSource
-type CfgServerKey = ?serverKey :: ServerKey
+type CfgServerKey = ?serverKey :: PersistentServerKey
+type CfgGHC802WorkAround = ?ghc802workaround :: String -- FIXME
 
 type CfgStrive = (CfgStravaAppId, CfgStravaAppSecret)
 
@@ -87,15 +90,15 @@ withStrive appId appSecret f = do
     let ?stravaAppSecret = appSecret
     f
 
-type CfgAuthCookies = (CfgAuthCookieSettings, CfgRandomSource, CfgServerKey)
+type CfgAuthCookies = (CfgAuthCookieSettings, CfgRandomSource, CfgServerKey, CfgGHC802WorkAround)
 
 withAuthCookies :: (CfgAuthCookies => IO a) -> IO a
 withAuthCookies f = do
     randomSource <- mkRandomSource drgNew 1000
     let ?randomSource = randomSource
-    serverKey <- mkServerKey 16 Nothing
-    let ?serverKey = serverKey
+    let ?serverKey = mkPersistentServerKey ""
     let ?authCookieSettings = def
+    let ?ghc802workaround = ""
     f
 
 type CfgAuth = (CfgStrive, CfgBaseUri, CfgAuthCookies)
@@ -111,19 +114,19 @@ type instance AuthCookieData = Auth
 type LoginApi
     = "login"
     :> QueryParam "code" String
-    :> GetFound '[PlainText] (Headers '[Header "set-cookie" ByteString] String)
+    :> GetFound '[PlainText] (Cookied String)
 
 loginApi :: Proxy LoginApi
 loginApi = Proxy
 
-type Link api l t = (IsElem l api, HasLink l, MkLink l ~ t)
+type LinkIs api l t = (IsElem l api, HasLink l, MkLink l ~ t)
 
 serveStriveLogin
-    :: (CfgAuth, Link api redirectApi URI, Link api LoginApi _t1)
+    :: (CfgAuth, LinkIs api redirectApi Link, LinkIs api LoginApi _t1)
     => Proxy api -> Proxy redirectApi -> Server LoginApi
 serveStriveLogin api redirectApi = \case
     Nothing ->
-        addHeader "" <$> redirect authorizeUri
+        noHeader <$> redirect authorizeUri
     Just code -> do
         Right res <- liftIO $ S.exchangeToken ?stravaAppId ?stravaAppSecret code
         let auth = Auth
@@ -133,14 +136,14 @@ serveStriveLogin api redirectApi = \case
         addSession' auth =<< redirect redirectUri
   where
     authorizeUri = S.buildAuthorizeUrl ?stravaAppId loginUri opts
-    loginUri = showAbsoluteUri $ safeLink api (Proxy :: Proxy LoginApi) Nothing
+    loginUri = showAbsoluteUri . linkURI $ safeLink api (Proxy :: Proxy LoginApi) Nothing
     opts = S.set S.privateScope True $ def
-    redirectUri = showAbsoluteUri $ safeLink api redirectApi
+    redirectUri = showAbsoluteUri . linkURI $ safeLink api redirectApi
     addSession' = addSession ?authCookieSettings ?randomSource ?serverKey
 
 type CookieAuthProtect = AuthProtect "cookie-auth"
 
-cookieAuthHandler :: CfgAuthCookies => AuthHandler Request Auth
+cookieAuthHandler :: CfgAuthCookies => AuthHandler Request (WithMetadata Auth)
 cookieAuthHandler = mkAuthHandler $ \request -> do
     msession <- handle (\(_ :: AuthCookieException) -> notAuth) $
         liftIO (getSession ?authCookieSettings ?serverKey request)

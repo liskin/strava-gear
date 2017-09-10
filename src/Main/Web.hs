@@ -18,10 +18,6 @@ import Data.String (String)
 import Data.Aeson (ToJSON(toJSON))
 import Database.Persist.Sql (SqlPersistM, runMigration)
 import Database.Persist.Sqlite (runSqlite)
-import Network.Wai.Application.Static
-    ( defaultWebAppSettings
-    , staticApp
-    )
 import Network.Wai.Handler.Warp (run)
 import Servant
     ( (:<|>)(..)
@@ -44,7 +40,9 @@ import Servant
     , Server
     , err400
     , errBody
+    , linkURI
     , safeLink
+    , serveDirectoryWebApp
     , serveWithContext
     )
 import Servant.HTML.Blaze (HTML)
@@ -121,7 +119,7 @@ homePage = html (H.title "strava-gear: Home") $ do
 loginButton :: CfgBaseUri => Markup
 loginButton = H.a H.! HA.href link $ imgConnect
   where
-    link = H.stringValue . showAbsoluteUri $ apiLink loginApi Nothing
+    link = H.stringValue . showAbsoluteUri . linkURI $ apiLink loginApi Nothing
 
 stravaLink :: Markup
 stravaLink = H.a H.! HA.href link $ imgLogo
@@ -143,13 +141,12 @@ serveStatic :: Server StaticApi
 serveStatic = serveDirectory "static"
 
 serveDirectory :: FilePath -> Server Raw
-serveDirectory =
-    staticApp . defaultWebAppSettings . addTrailingPathSeparator
+serveDirectory = serveDirectoryWebApp . addTrailingPathSeparator
 
 type TestApi = CookieAuthProtect :> Get '[HTML] Markup
 
 serveTest :: Server TestApi
-serveTest Auth{..} = pure . H.docTypeHtml $ do
+serveTest WithMetadata{wmData = Auth{..}} = pure . H.docTypeHtml $ do
     H.head (H.title "test")
     H.body $ do
         H.p $ "token: " <> H.text authToken
@@ -160,7 +157,7 @@ type ApiApi
     :<|> "sync" :> SyncApi
     :<|> "report" :> ReportApi
 
-serveApi :: Auth -> Server ApiApi
+serveApi :: WithMetadata Auth -> Server ApiApi
 serveApi auth
     =    serveConfigApi auth
     :<|> serveSyncApi auth
@@ -171,7 +168,7 @@ type ConfigApi =
     :<|> "check" :> ConfigCheckApi
     :<|> "sample" :> ConfigSampleApi
 
-serveConfigApi :: Auth -> Server ConfigApi
+serveConfigApi :: WithMetadata Auth -> Server ConfigApi
 serveConfigApi auth
     =    serveConfigPostApi auth
     :<|> serveConfigCheckApi auth
@@ -182,7 +179,7 @@ type ConfigPostApi
     =  ReqBody '[PlainText] Text
     :> PostNoContent '[PlainText] NoContent
 
-serveConfigPostApi :: Auth -> Server ConfigPostApi
+serveConfigPostApi :: WithMetadata Auth -> Server ConfigPostApi
 serveConfigPostApi auth conf =
     withConfig conf $ \cfg ->
         withClient auth $ \_client ->
@@ -193,7 +190,7 @@ type ConfigCheckApi
     =  ReqBody '[PlainText] Text
     :> PostNoContent '[PlainText] NoContent
 
-serveConfigCheckApi :: Auth -> Server ConfigCheckApi
+serveConfigCheckApi :: WithMetadata Auth -> Server ConfigCheckApi
 serveConfigCheckApi _auth conf =
     withConfig conf $ const $ pure NoContent
 
@@ -204,7 +201,7 @@ withConfig c f = either e f $ parseConf c
 
 type ConfigSampleApi = Get '[PlainText] Text
 
-serveConfigSampleApi :: Auth -> Server ConfigSampleApi
+serveConfigSampleApi :: WithMetadata Auth -> Server ConfigSampleApi
 serveConfigSampleApi auth =
     withClient auth $ const sampleConfig
 
@@ -212,7 +209,7 @@ type SyncApi
     =  QueryFlag "full"
     :> Post '[JSON] SyncStravaRes
 
-serveSyncApi :: Auth -> Server SyncApi
+serveSyncApi :: WithMetadata Auth -> Server SyncApi
 serveSyncApi auth = withClient auth . syncStrava
     -- TODO: store last sync time and perhaps perform full sync once a week
     -- or something?
@@ -221,7 +218,7 @@ type ReportApi
     =    "components" :> ReportComponentsApi
     :<|> "bikes" :> ReportBikesApi
 
-serveReportApi :: Auth -> Server ReportApi
+serveReportApi :: WithMetadata Auth -> Server ReportApi
 serveReportApi auth
     =    serveReportComponentsApi auth
     :<|> serveReportBikesApi auth
@@ -238,13 +235,13 @@ instance H.ToMarkup Report where
 
 type ReportComponentsApi = Get '[HTML, JSON] Report
 
-serveReportComponentsApi :: Auth -> Server ReportComponentsApi
+serveReportComponentsApi :: WithMetadata Auth -> Server ReportComponentsApi
 serveReportComponentsApi auth =
     Report "Components report" <$> withClient auth (const componentReport)
 
 type ReportBikesApi = Get '[HTML, JSON] Report
 
-serveReportBikesApi :: Auth -> Server ReportBikesApi
+serveReportBikesApi :: WithMetadata Auth -> Server ReportBikesApi
 serveReportBikesApi auth =
     Report "Bikes report" <$> withClient auth (const bikesReport)
 
@@ -279,8 +276,8 @@ html h container = H.docTypeHtml $ do
         H.div H.! HA.class_ "u-pull-left" $ stravaLink
         H.div H.! HA.class_ "u-pull-right" $ githubLink
 
-withClient :: Auth -> (S.Client -> SqlPersistM a) -> Handler a
-withClient Auth{..} f =
+withClient :: WithMetadata Auth -> (S.Client -> SqlPersistM a) -> Handler a
+withClient WithMetadata{wmData = Auth{..}} f =
     liftIO . runSqlite ("athlete_" <> show authAthlete <> ".sqlite") $ do
         runMigration migrateAll
         liftIO (S.buildClient (Just authToken)) >>= f
