@@ -1,5 +1,5 @@
-LTS=9
-STACK=stack --stack-yaml stack-lts-$(LTS).yaml
+STACKAGE=lts-9
+STACK=stack --stack-yaml stack-$(STACKAGE).yaml
 
 all:
 	$(STACK) build --copy-bins --local-bin-path "$(shell pwd)/bin"

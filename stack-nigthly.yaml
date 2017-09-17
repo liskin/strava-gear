@@ -1,0 +1,5 @@
+resolver: nightly-2017-09-17
+flags: {}
+packages: ['.']
+extra-deps:
+    - megaparsec-5.3.1

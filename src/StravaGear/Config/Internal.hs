@@ -11,7 +11,7 @@ module StravaGear.Config.Internal
     )
   where
 
-import Protolude hiding (isPrefixOf, try)
+import Protolude hiding (isPrefixOf, try, option, Symbol)
 
 import Control.Monad.Fail (MonadFail(fail))
 import qualified Data.Set as S (member, singleton)
