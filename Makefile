@@ -12,4 +12,3 @@ ghci:
 
 ghcid:
 	ghcid -c "$(STACK) ghci"
-	
