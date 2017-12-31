@@ -12,3 +12,8 @@ ghci:
 
 ghcid:
 	ghcid -c "$(STACK) ghci"
+
+yearly:
+	m4 -DYEAR=$(shell date +%Y) yearly_summary.sql.m4 \
+		| sqlite3 $(firstword $(wildcard athlete_*.sqlite)) \
+		| perl -0777 -pe 's/(SELECT.*?;)/`tput setaf 246` . $$1 . `tput sgr0`/gse'
