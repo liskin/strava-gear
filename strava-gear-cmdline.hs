@@ -1,2 +1,1 @@
-{-# LANGUAGE NoImplicitPrelude #-}
-import Main.CmdLine (main)
+module Main (main) where import Main.CmdLine (main)
