@@ -17,35 +17,18 @@ library:
     source-dirs: src
     dependencies:
         - aeson
-        - blaze-html
-        - bytestring
-        - cereal
-        - cereal-text
         - containers
-        - cryptonite
-        - data-default
         - esqueleto
-        - exceptions
-        - filepath
-        - html
-        - megaparsec >=5.2
-        - network-uri
+        - megaparsec
         - persistent
         - persistent-sqlite
         - persistent-template
         - scientific
-        - servant-auth-cookie
-        - servant-blaze
-        - servant-server
         - split
         - strive
         - tabular
         - text
         - time
-        - transformers
-        - wai
-        - wai-app-static
-        - warp
 
 tests:
     hspec:
@@ -72,7 +55,3 @@ executables:
     strava-gear-cmdline:
         <<: *default_executable
         main: strava-gear-cmdline.hs
-
-    strava-gear-web:
-        <<: *default_executable
-        main: strava-gear-web.hs
