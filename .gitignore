@@ -1,3 +1,10 @@
-.stack-work/
-/strava-gear.cabal
+# build files
+/.stack-work/
+/bin/
+/*.cabal
+
+# config
 /src/Config.hs
+
+# runtime files
+/athlete_*.sqlite
