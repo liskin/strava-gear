@@ -5,6 +5,7 @@ module Main.CmdLine (main) where
 
 import Protolude
 
+import Control.Monad.Fail (fail)
 import Database.Persist.Sql (SqlPersistM, runMigration)
 import Database.Persist.Sqlite (runSqlite)
 import qualified Strive as S
@@ -25,7 +26,7 @@ import StravaGear.Report (bikesReport, componentReport)
 main :: IO ()
 main = do
     client <- S.buildClient $ Just $ toS token
-    Right athlete <- S.getCurrentAthlete client
+    athlete <- either (fail . show) pure =<< S.getCurrentAthlete client
     let athleteId = S.id `S.get` athlete :: Integer
     let sqliteFileName = "athlete_" <> show athleteId <> ".sqlite"
     let confFileName = "athlete_" <> show athleteId <> ".conf"
