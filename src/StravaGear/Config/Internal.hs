@@ -15,36 +15,37 @@ import Protolude hiding (isPrefixOf, try, option, Symbol)
 
 import Control.Monad.Fail (MonadFail(fail))
 import qualified Data.Set as S (member, singleton)
-import Data.String (String)
 
 import Data.Scientific (toRealFloat)
 import Data.Time (UTCTime, defaultTimeLocale, iso8601DateFormat, parseTimeM)
 import Text.Megaparsec
-    ( Dec
-    , ParsecT
+    ( ErrorFancy
     , ParseError
-    , alphaNumChar
-    , char
+    , ParsecT
     , eof
     , label
     , lookAhead
     , manyTill
-    , numberChar
-    , oneOf
     , option
     , runParserT
     , parseErrorPretty
+    )
+import Text.Megaparsec.Char
+    ( alphaNumChar
+    , char
+    , numberChar
+    , oneOf
     , spaceChar
     , string
     )
-import qualified Text.Megaparsec.Lexer as L
+import qualified Text.Megaparsec.Char.Lexer as L
     ( IndentOpt(..)
     , charLiteral
+    , decimal
     , indentBlock
-    , integer
     , lexeme
     , nonIndented
-    , number
+    , scientific
     , skipLineComment
     , space
     )
@@ -134,7 +135,7 @@ lexeme = L.lexeme sc . followedBySpace
     sc = L.space (void $ oneOf [' ', '\t']) lineComment empty
     followedBySpace = (<* (lookAhead (void spaceChar) <|> eof))
 
-keyword :: String -> ParserT m ()
+keyword :: Text -> ParserT m ()
 keyword s = void $ lexeme $ string s
 
 word :: ParserT m Text
@@ -147,7 +148,7 @@ duration :: ParserT m Int
 duration = label "duration" $
     lexeme $ (*) <$> int <*> option 1 (hours <|> days)
   where
-    int = fromIntegral <$> L.integer
+    int = L.decimal
     hours = string "h" *> pure 3600
     days = string "d" *> pure 86400
 
@@ -155,7 +156,7 @@ distance :: ParserT m Double
 distance = label "distance" $
     lexeme $ (*) <$> double <*> option 1 kms
   where
-    double = toRealFloat <$> L.number
+    double = toRealFloat <$> L.scientific
     kms = string "km" *> pure 1000
 
 time :: ParserT m UTCTime
@@ -230,9 +231,9 @@ checkKnown s = do
         fail $ "undeclared " <> show x
     pure x
 
-type ParserT = ParsecT Dec Text
+type ParserT = ParsecT (ErrorFancy Void) Text
 type Parser = ParserT (State KnownSymbols)
-type ParseResult = Either (ParseError Char Dec)
+type ParseResult = Either (ParseError Char (ErrorFancy Void))
 
 runParser :: Parser a -> KnownSymbols -> Text -> ParseResult a
 runParser p s = flip evalState s . runParserT p ""

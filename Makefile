@@ -1,18 +1,20 @@
-STACKAGE=lts-9
-STACK=stack --stack-yaml stack-$(STACKAGE).yaml
-
+.PHONY: all
 all:
-	$(STACK) build --copy-bins --local-bin-path "$(shell pwd)/bin"
+	stack build --copy-bins --local-bin-path "$(shell pwd)/bin"
 
+.PHONY: test
 test:
-	$(STACK) test
+	stack test
 
+.PHONY: ghci
 ghci:
-	$(STACK) ghci
+	stack ghci
 
+.PHONY: ghcid
 ghcid:
-	ghcid -c "$(STACK) ghci"
+	ghcid --restart package.yaml -c "stack ghci"
 
+.PHONY: yearly
 yearly:
 	m4 -DYEAR=$(shell date +%Y) yearly_summary.sql.m4 \
 		| sqlite3 $(firstword $(wildcard athlete_*.sqlite)) \
