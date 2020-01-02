@@ -11,7 +11,7 @@ module StravaGear.Sync
     )
   where
 
-import Protolude hiding (from, isNothing, isPrefixOf, on)
+import Protolude hiding (all, from, isNothing, isPrefixOf, on)
 
 import Control.Arrow ((&&&))
 import qualified Data.Map as Map ((!), fromList)
@@ -19,7 +19,8 @@ import qualified Data.Set as Set (empty, insert, member)
 import System.IO.Unsafe (unsafePerformIO)
 
 import Data.Aeson (ToJSON)
-import Data.Text (isPrefixOf, words)
+import Data.Char (isDigit)
+import Data.Text (all, splitOn, stripPrefix, words)
 import Data.Time (UTCTime, getCurrentTime)
 import Database.Esqueleto
     ( InnerJoin(InnerJoin)
@@ -161,7 +162,11 @@ syncHashTags new = do
 
 actHashTags :: Activity -> [HashTag]
 actHashTags Activity{activityName = name} =
-    [ HashTag (HashTagText w) | w <- words name, "#" `isPrefixOf` w ]
+    [ HashTag (HashTagText w)
+    | w <- concatMap words . splitOn ", " $ name
+    , Just w' <- pure $ stripPrefix "#" w
+    , not (all isDigit w')
+    ]
 
 activityActivityHashTags :: [Key Activity] -> SqlPersistM [Key ActivityHashTag]
 activityActivityHashTags as =
