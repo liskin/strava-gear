@@ -1,0 +1,3 @@
+[submodule "dep/strive"]
+	path = dep/strive
+	url = https://github.com/liskin/strive.git

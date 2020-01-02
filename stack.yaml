@@ -1,5 +1,7 @@
 resolver: lts-12.26
-flags: {}
-packages: ['.']
+packages:
+    - .
+    - dep/strive
 extra-deps:
     - esqueleto-2.7.0
+flags: {}

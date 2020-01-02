@@ -4,15 +4,15 @@ all:
 
 .PHONY: test
 test:
-	stack test
+	stack test strava-gear:hspec
 
 .PHONY: ghci
 ghci:
-	stack ghci
+	stack ghci strava-gear:lib
 
 .PHONY: ghcid
 ghcid:
-	ghcid --restart package.yaml -c "stack ghci"
+	ghcid --restart package.yaml -c "stack ghci strava-gear:lib"
 
 .PHONY: yearly
 yearly:
