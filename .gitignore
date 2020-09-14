@@ -4,7 +4,7 @@
 /*.cabal
 
 # config
-/src/Config.hs
+/.private.sh
 
 # runtime files
 /athlete_*.sqlite

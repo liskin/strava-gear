@@ -1,9 +1,0 @@
-{-# OPTIONS_GHC -fno-warn-missing-signatures #-}
-
-module Config where
-
-import Protolude
-
-url = "http://localhost:8080/"
-clientId = 12345 :: Integer
-clientSecret = "..."

@@ -15,8 +15,8 @@ import qualified Strive as S
     , id
     )
 import qualified Text.Tabular.AsciiArt as Tab (render)
+import System.Environment (getEnv)
 
-import Config (token)
 import StravaGear.Config (parseConf)
 import StravaGear.Database.Schema (migrateAll)
 import StravaGear.Sync (syncConfig, syncStrava)
@@ -25,6 +25,7 @@ import StravaGear.Report (bikesReport, componentReport)
 
 main :: IO ()
 main = do
+    token <- getEnv "STRAVA_ACCESS_TOKEN"
     client <- S.buildClient $ Just $ toS token
     athlete <- either (fail . show) pure =<< S.getCurrentAthlete client
     let athleteId = S.id `S.get` athlete :: Integer
