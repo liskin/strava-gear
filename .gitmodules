@@ -1,8 +1,0 @@
-[submodule "dep/strive"]
-	path = dep/strive
-	#url = https://github.com/tfausak/strive.git
-	url = https://github.com/liskin/strive.git
-[submodule "dep/strava-oauth"]
-	path = dep/strava-oauth
-	#url = https://github.com/sladkovm/strava-oauth
-	url = https://github.com/liskin/strava-oauth
