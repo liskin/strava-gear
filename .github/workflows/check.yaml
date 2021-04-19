@@ -1,0 +1,142 @@
+name: Check
+
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+  schedule:
+    # Re-test every month
+    - cron: '0 2 1 * *'
+
+env:
+  # more verbosity to make it easier to understand failures
+  PYTEST_FLAGS: -v --log-level=DEBUG
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - '3.7'
+          - '3.8'
+          - '3.9'
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        id: setup-python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Get pip cache dir
+        id: pip-cache
+        run: |
+          echo "::set-output name=dir::$(pip cache dir)"
+      - name: Persistent Github pip cache
+        uses: actions/cache@v2
+        with:
+          path: ${{ steps.pip-cache.outputs.dir }}
+          key: pip-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml', 'setup.cfg', 'setup.py', 'Makefile') }}
+          restore-keys: |
+            pip-${{ runner.os }}-${{ matrix.python-version }}-
+            pip-${{ runner.os }}-
+      - name: Persistent Github venv cache
+        uses: actions/cache@v2
+        with:
+          path: .venv/
+          key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('pyproject.toml', 'setup.cfg', 'setup.py', 'Makefile') }}
+      - name: Install dependencies
+        run: make venv
+      - name: flake8
+        uses: liskin/gh-problem-matcher-wrap@v1
+        with:
+          linters: flake8
+          run: make lint-flake8
+      - name: mypy
+        uses: liskin/gh-problem-matcher-wrap@v1
+        with:
+          linters: mypy
+          run: make lint-mypy
+      - name: isort
+        uses: liskin/gh-problem-matcher-wrap@v1
+        with:
+          linters: isort
+          run: make lint-isort
+      - name: pytest
+        uses: liskin/gh-problem-matcher-wrap@v1
+        with:
+          linters: pytest
+          run: make test
+      - name: readme
+        run: make readme
+
+  check-distro:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - 'debian:unstable'
+          - 'debian:bookworm'
+          - 'debian:11'
+          - 'debian:10'
+          - 'ubuntu:20.04'
+          - 'ubuntu:20.10'
+          - 'ubuntu:21.04'
+
+    container: ${{ matrix.image }}
+
+    steps:
+      - name: Install dependencies via apt
+        run: |
+          set -ex
+          export DEBIAN_FRONTEND=noninteractive
+          apt update
+          apt-cache --generate pkgnames \
+            | grep --line-regexp --fixed-strings \
+              -e git \
+              -e python-pip-whl \
+              -e python3-appdirs \
+              -e python3-click \
+              -e python3-cram \
+              -e python3-flake8 \
+              -e python3-isort \
+              -e python3-mypy \
+              -e python3-pep517 \
+              -e python3-pip \
+              -e python3-pyls \
+              -e python3-pytest \
+              -e python3-typing-extensions \
+              -e python3-venv \
+              -e python3-yaml \
+              -e twine \
+            | xargs apt install -y
+      - uses: actions/checkout@v2
+      - name: Install remaining dependencies
+        run: make venv-system-site-packages
+      - name: flake8
+        uses: liskin/gh-problem-matcher-wrap@v1
+        with:
+          linters: flake8
+          run: make lint-flake8
+      - name: mypy
+        uses: liskin/gh-problem-matcher-wrap@v1
+        with:
+          linters: mypy
+          run: make lint-mypy
+      - name: isort
+        uses: liskin/gh-problem-matcher-wrap@v1
+        with:
+          linters: isort
+          run: make lint-isort
+      - name: pytest
+        uses: liskin/gh-problem-matcher-wrap@v1
+        with:
+          linters: pytest
+          run: make test
+      - name: readme
+        run: make readme
