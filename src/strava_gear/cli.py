@@ -1,5 +1,7 @@
-import pandas as pd  # type: ignore [import]
 import click
+import pandas as pd  # type: ignore [import]
+
+from .config import read_config
 
 
 def read_input_csv(inp):
@@ -21,7 +23,12 @@ def read_input_csv(inp):
 
 
 @click.command()
+@click.argument('config', type=click.File('r'))
 @click.argument('input', type=click.File('r'), default='-')
-def main(input):
+def main(config, input):
+    c = read_config(config)
+    print(c)
+    return
+
     i = read_input_csv(input)
     print(i)
