@@ -47,7 +47,8 @@ components:
     hours: 100 h
 
   # tyres
-  …
+  g_one_1: "Schwalbe G-One 35-622"
+  g_one_2: "Schwalbe G-One 35-622"
 
 rules:
 - since: 2010-01-01
@@ -55,9 +56,9 @@ rules:
     frame: agang_sin_city
     cranks: alfine_cranks
     derailleur_rear: deore_rd
-- hashtag: "#graveldiverge"
+  '#graveldiverge':
+    tyre_front: g_one_1
 
-# since/hashtag optional
+# since optional, defaults to epoch
 # since default to epoch
-# hashtag defaults to undefined
 ```

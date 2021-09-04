@@ -2,7 +2,6 @@ from dataclasses import dataclass
 import datetime
 from typing import Dict
 from typing import List
-from typing import Optional
 
 import jsonschema  # type: ignore [import]
 import pandas as pd  # type: ignore [import]
@@ -41,7 +40,6 @@ config_schema = {
                 'type': 'object',
                 'properties': {
                     'since': {'format': 'datetime'},
-                    'hashtag': {'type': 'string', 'format': 'hashtag'},
                 },
                 'additionalProperties': {
                     'type': 'object',
@@ -56,11 +54,6 @@ config_schema = {
 @config_format_checker.checks('datetime')
 def format_checker_datetime(d):
     return isinstance(d, (datetime.datetime, datetime.date,))
-
-
-@config_format_checker.checks('hashtag')
-def format_checker_hashtag(s: str):
-    return s.startswith('#')
 
 
 @dataclass(frozen=True)
@@ -84,17 +77,23 @@ def process_component(k: str, v) -> Component:
 @dataclass(frozen=True)
 class Rule:
     bikes: Dict[str, Dict[str, str]]
+    hashtags: Dict[str, Dict[str, str]]
     since: pd.Timestamp = pd.to_datetime(0, utc=True)
-    hashtag: Optional[str] = None
 
 
 def process_rule(r: Dict) -> Rule:
+    bikes = {}
+    hashtags = {}
     kwargs = {}
-    if 'since' in r:
-        kwargs['since'] = pd.to_datetime(r.pop('since'), utc=True)
-    if 'hashtag' in r:
-        kwargs['hashtag'] = r.pop('hashtag')
-    return Rule(bikes=r, **kwargs)
+    for k, v in r.items():
+        if k == 'since':
+            kwargs[k] = pd.to_datetime(v, utc=True)
+        elif k.startswith('#'):
+            hashtags[k] = v
+        else:
+            bikes[k] = v
+
+    return Rule(bikes=bikes, hashtags=hashtags, **kwargs)
 
 
 @dataclass(frozen=True)
