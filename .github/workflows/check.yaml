@@ -106,6 +106,7 @@ jobs:
               -e python3-flake8 \
               -e python3-isort \
               -e python3-mypy \
+              -e python3-pandas \
               -e python3-pep517 \
               -e python3-pip \
               -e python3-pyls \
