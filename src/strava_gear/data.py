@@ -5,8 +5,11 @@ from typing import Dict
 from typing import List
 from typing import NewType
 from typing import Set
+from typing import TypeVar
 
 import pandas as pd  # type: ignore [import]
+
+T = TypeVar('T')
 
 ComponentType = NewType('ComponentType', str)
 ComponentId = NewType('ComponentId', str)
@@ -16,6 +19,7 @@ BikeName = NewType('BikeName', str)
 HashTag = NewType('HashTag', str)
 
 ComponentMap = Dict[ComponentType, ComponentId]
+Mapping = Dict[T, ComponentMap]
 
 
 @dataclass(frozen=True)
@@ -28,8 +32,8 @@ class Component:
 
 @dataclass(frozen=True)
 class Rule:
-    bikes: Dict[BikeId, ComponentMap] = field(default_factory=dict)
-    hashtags: Dict[HashTag, ComponentMap] = field(default_factory=dict)
+    bikes: Mapping[BikeId] = field(default_factory=dict)
+    hashtags: Mapping[HashTag] = field(default_factory=dict)
     since: pd.Timestamp = pd.to_datetime(0, utc=True)
 
     def __add__(self, other):
@@ -49,20 +53,17 @@ class Rule:
         return replace(other, bikes=bikes, hashtags=hashtags)
 
 
-def prune_mapping(m: Dict[str, ComponentMap]) -> Dict[str, ComponentMap]:
+def prune_mapping(m: Mapping[T]) -> Mapping[T]:
     """Prune mapping—drop null/None components and empty dicts."""
     return {a: b for a, b in ((a, {c: d for c, d in b.items() if d}) for a, b in m.items()) if b}
 
 
-def update_mappings(
-    m1: Dict[str, ComponentMap],
-    m2: Dict[str, ComponentMap]
-) -> Dict[str, ComponentMap]:
+def update_mappings(m1: Mapping[T], m2: Mapping[T]) -> Mapping[T]:
     """Override component mappings in m1 by those in m2."""
     return {a: {**m1.get(a, {}), **m2.get(a, {})} for a in m1.keys() | m2.keys()}
 
 
-def filter_mapping(m: Dict[str, ComponentMap], f: Set[str]) -> Dict[str, ComponentMap]:
+def filter_mapping(m: Mapping[T], f: Set[T]) -> Mapping[T]:
     """Remove components from a mapping."""
     return {a: {c: d for c, d in b.items() if d not in f} for a, b in m.items()}
 
