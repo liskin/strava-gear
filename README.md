@@ -43,8 +43,8 @@ components:
   agang_sin_city: "Agang Sin City 2010"  # name specified
   specialized_diverge:                   # name specified as a property
     name: "Specialized Diverge Comp Carbon 2015"
-    distance: 2000 km     # usage not tracked in the data (2nd hand components)
-    hours: 100 h
+    kms: 2000    # usage not tracked in the data (2nd hand components)
+    hours: 100
 
   # tyres
   g_one_1: "Schwalbe G-One 35-622"

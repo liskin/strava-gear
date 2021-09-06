@@ -34,8 +34,8 @@ config_schema = {
                         'additionalProperties': False,
                         'properties': {
                             'name': {'type': 'string'},
-                            'distance': {'type': 'string'},
-                            'hours': {'type': 'string'},
+                            'kms': {'type': 'number'},
+                            'hours': {'type': 'number'},
                         },
                     },
                 ],
@@ -70,8 +70,10 @@ def process_component(k: str, v) -> Component:
     elif isinstance(v, str):
         return Component(ident=ComponentId(k), name=ComponentName(v))
     else:
-        name = v.pop('name', k)
-        return Component(ident=ComponentId(k), name=ComponentName(name), **v)  # TODO: parse distance/hours
+        name = v.get('name', k)
+        distance = v.get('kms', 0) * 1000
+        time = v.get('hours', 0) * 3600
+        return Component(ident=ComponentId(k), name=ComponentName(name), distance=distance, time=time)
 
 
 def process_rule(r: Dict, aliases: Dict[BikeName, BikeId]) -> Rule:

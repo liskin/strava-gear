@@ -26,8 +26,8 @@ Mapping = Dict[T, ComponentMap]
 class Component:
     ident: ComponentId  # TODO: do we need this?
     name: ComponentName
-    distance: int = 0  # TODO: pint
-    hours: int = 0
+    distance: int = 0  # meters
+    time: int = 0  # seconds
 
 
 @dataclass(frozen=True)
