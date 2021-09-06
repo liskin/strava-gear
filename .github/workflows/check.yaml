@@ -83,7 +83,6 @@ jobs:
           - 'debian:unstable'
           - 'debian:bookworm'
           - 'debian:11'
-          - 'debian:10'
           - 'ubuntu:20.04'
           - 'ubuntu:20.10'
           - 'ubuntu:21.04'
