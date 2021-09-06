@@ -99,7 +99,7 @@ def process_rules(c: Dict, aliases: Dict[BikeName, BikeId]) -> Rules:
     aliases = {**aliases, **c.get('aliases', {})}
     return Rules(
         bike_names={v: k for k, v in aliases.items()},
-        components={k: process_component(k, v) for k, v in c.get('components', {}).items()},
+        components=[process_component(k, v) for k, v in c.get('components', {}).items()],
         rules=[process_rule(r, aliases=aliases) for r in c.get('rules', [])],
     )
 

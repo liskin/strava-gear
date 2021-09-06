@@ -1,34 +1,45 @@
-import click
-import pandas as pd  # type: ignore [import]
+import os
 
+import appdirs  # type: ignore [import]
+import click
+from tabulate import tabulate
+
+from .core import apply_rules
+from .input import read_input_csv
+from .input import read_strava_offline
 from .rules_yaml import read_rules
 
 
-def read_input_csv(inp):
-    """
-    Loads activities from CSV generated from this command:
+@click.command(context_settings={'max_content_width': 120})
+@click.option(
+    '--rules', type=click.File('r'),
+    default=os.path.join(appdirs.user_data_dir(appname=__package__), 'rules.yaml'),
+    show_default=True,
+    help="Rules configuration (bikes, components, …)")
+@click.option(
+    '--csv', type=click.File('r'),
+    help="""
+    Load activities from CSV instead of the strava-offline database
+    (columns: name, gear_id, start_date, moving_time, distance)
+    """)
+@click.option(
+    '--strava-database', type=click.Path(),
+    default=os.path.join(appdirs.user_data_dir(appname='strava_offline'), 'strava.sqlite'),
+    show_default=True,
+    help="Location of the strava-offline database")
+def main(rules, csv, strava_database):
+    if csv:
+        aliases, activities = {}, read_input_csv(csv)
+    else:
+        aliases, activities = read_strava_offline()
+    rules = read_rules(rules, aliases=aliases)
+    activities = apply_rules(rules, activities)
+    usage = activities['usage'].sum()
+    components = [c.add_usage(usage) for c in rules.components]
 
-        sqlite3 ~/.local/share/strava_offline/strava.sqlite \
-            ".mode csv" \
-            ".headers on" \
-            "SELECT gear_id, start_date, moving_time, distance FROM activity" \
-            >activities.csv
-    """
-    return pd.read_csv(
-        inp,
-        usecols=['gear_id', 'start_date', 'moving_time', 'distance'],
-        dtype={'gear_id': 'string', 'moving_time': 'int64', 'distance': 'float64'},
-        parse_dates=['start_date'],
-    )
-
-
-@click.command()
-@click.argument('config', type=click.File('r'))
-@click.argument('input', type=click.File('r'), default='-')
-def main(config, input):
-    c = read_rules(config)
-    print(c)
-    return
-
-    i = read_input_csv(input)
-    print(i)
+    report = [[c.ident, c.name, c.distance / 1000, c.time / 3600] for c in components]
+    print(tabulate(
+        report,
+        headers=["id", "name", "distance (km)", "time (hour)"],
+        floatfmt=".1f",
+    ))

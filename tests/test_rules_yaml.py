@@ -19,7 +19,7 @@ def test_read_rules():
         - b1: {}
         """
     ) == Rules(
-        bike_names={}, components={},
+        bike_names={}, components=[],
         rules=[Rule(bikes={'b1': {}}, hashtags={}, since=pd.to_datetime(0, utc=True))]
     )
 
@@ -33,7 +33,7 @@ def test_read_rules():
           b2: {}
         """
     ) == Rules(
-        bike_names={'b1': "city"}, components={},
+        bike_names={'b1': "city"}, components=[],
         rules=[Rule(bikes={'b1': {}, 'b2': {}}, hashtags={}, since=pd.to_datetime(0, utc=True))]
     )
     assert rd(
@@ -46,7 +46,7 @@ def test_read_rules():
         aliases={'town': 'b1'}
     ) == Rules(
         # aliases from rules config override aliases from strava
-        bike_names={'b1': "city"}, components={},
+        bike_names={'b1': "city"}, components=[],
         rules=[Rule(bikes={'b1': {}}, hashtags={}, since=pd.to_datetime(0, utc=True))]
     )
 

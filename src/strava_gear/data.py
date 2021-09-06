@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from dataclasses import field
 from dataclasses import replace
 from typing import Dict
+from typing import Iterable
 from typing import List
 from typing import NewType
 from typing import Set
@@ -24,10 +27,16 @@ Mapping = Dict[T, ComponentMap]
 
 @dataclass(frozen=True)
 class Component:
-    ident: ComponentId  # TODO: do we need this?
+    ident: ComponentId
     name: ComponentName
-    distance: int = 0  # meters
-    time: int = 0  # seconds
+    distance: float = 0  # meters
+    time: float = 0  # seconds
+
+    def add_usage(self, usage: Usage) -> Component:
+        return replace(
+            self,
+            distance=self.distance + usage.distances.get(self.ident, 0),
+            time=self.time + usage.times.get(self.ident, 0))
 
 
 @dataclass(frozen=True)
@@ -71,5 +80,29 @@ def filter_mapping(m: Mapping[T], f: Set[T]) -> Mapping[T]:
 @dataclass(frozen=True)
 class Rules:
     bike_names: Dict[BikeId, BikeName]
-    components: Dict[ComponentId, Component]
+    components: List[Component]
     rules: List[Rule]
+
+
+@dataclass
+class Usage:
+    distances: Dict[ComponentId, float] = field(default_factory=dict)
+    times: Dict[ComponentId, float] = field(default_factory=dict)
+
+    @staticmethod
+    def from_activity(components: Iterable[ComponentId], distance: float, time: float):
+        return Usage(
+            distances={c: distance for c in components},
+            times={c: time for c in components})
+
+    def __iadd__(self, other):
+        for k, v in other.distances.items():
+            self.distances[k] = self.distances.get(k, 0) + v
+        for k, v in other.times.items():
+            self.times[k] = self.times.get(k, 0) + v
+        return self
+
+    def __add__(self, other):
+        self_copy = replace(self, distances=self.distances.copy(), times=self.times.copy())
+        self_copy += other
+        return self_copy

@@ -111,6 +111,7 @@ jobs:
               -e python3-pip \
               -e python3-pyls \
               -e python3-pytest \
+              -e python3-tabulate \
               -e python3-typing-extensions \
               -e python3-venv \
               -e python3-yaml \
