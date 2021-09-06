@@ -3,23 +3,33 @@ from dataclasses import field
 from dataclasses import replace
 from typing import Dict
 from typing import List
+from typing import NewType
 from typing import Set
 
 import pandas as pd  # type: ignore [import]
 
+ComponentType = NewType('ComponentType', str)
+ComponentId = NewType('ComponentId', str)
+ComponentName = NewType('ComponentName', str)
+BikeId = NewType('BikeId', str)
+BikeName = NewType('BikeName', str)
+HashTag = NewType('HashTag', str)
+
+ComponentMap = Dict[ComponentType, ComponentId]
+
 
 @dataclass(frozen=True)
 class Component:
-    ident: str  # TODO: do we need this?
-    name: str
+    ident: ComponentId  # TODO: do we need this?
+    name: ComponentName
     distance: int = 0  # TODO: pint
     hours: int = 0
 
 
 @dataclass(frozen=True)
 class Rule:
-    bikes: Dict[str, Dict[str, str]] = field(default_factory=dict)
-    hashtags: Dict[str, Dict[str, str]] = field(default_factory=dict)
+    bikes: Dict[BikeId, ComponentMap] = field(default_factory=dict)
+    hashtags: Dict[HashTag, ComponentMap] = field(default_factory=dict)
     since: pd.Timestamp = pd.to_datetime(0, utc=True)
 
     def __add__(self, other):
@@ -39,26 +49,26 @@ class Rule:
         return replace(other, bikes=bikes, hashtags=hashtags)
 
 
-def prune_mapping(m: Dict[str, Dict[str, str]]) -> Dict[str, Dict[str, str]]:
+def prune_mapping(m: Dict[str, ComponentMap]) -> Dict[str, ComponentMap]:
     """Prune mapping—drop null/None components and empty dicts."""
     return {a: b for a, b in ((a, {c: d for c, d in b.items() if d}) for a, b in m.items()) if b}
 
 
 def update_mappings(
-    m1: Dict[str, Dict[str, str]],
-    m2: Dict[str, Dict[str, str]]
-) -> Dict[str, Dict[str, str]]:
+    m1: Dict[str, ComponentMap],
+    m2: Dict[str, ComponentMap]
+) -> Dict[str, ComponentMap]:
     """Override component mappings in m1 by those in m2."""
     return {a: {**m1.get(a, {}), **m2.get(a, {})} for a in m1.keys() | m2.keys()}
 
 
-def filter_mapping(m: Dict[str, Dict[str, str]], f: Set[str]) -> Dict[str, Dict[str, str]]:
+def filter_mapping(m: Dict[str, ComponentMap], f: Set[str]) -> Dict[str, ComponentMap]:
     """Remove components from a mapping."""
     return {a: {c: d for c, d in b.items() if d not in f} for a, b in m.items()}
 
 
 @dataclass(frozen=True)
 class Rules:
-    aliases: Dict[str, str]
-    components: Dict[str, Component]
+    bike_names: Dict[BikeId, BikeName]
+    components: Dict[ComponentId, Component]
     rules: List[Rule]
