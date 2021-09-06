@@ -1,7 +1,7 @@
 import pandas as pd  # type: ignore [import]
 import pytest  # type: ignore [import]
 
-from strava_gear.config import Rule
+from strava_gear.data import Rule
 
 
 def test_rule():

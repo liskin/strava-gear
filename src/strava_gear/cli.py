@@ -1,7 +1,7 @@
 import click
 import pandas as pd  # type: ignore [import]
 
-from .config import read_config
+from .rules_yaml import read_rules
 
 
 def read_input_csv(inp):
@@ -26,7 +26,7 @@ def read_input_csv(inp):
 @click.argument('config', type=click.File('r'))
 @click.argument('input', type=click.File('r'), default='-')
 def main(config, input):
-    c = read_config(config)
+    c = read_rules(config)
     print(c)
     return
 
