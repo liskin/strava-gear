@@ -42,6 +42,7 @@ config_schema = {
         },
         'rules': {
             'type': 'array',
+            'minItems': 1,
             'items': {
                 'type': 'object',
                 'properties': {
@@ -88,7 +89,7 @@ def process_rule(r: Dict, aliases: Dict[BikeName, BikeId]) -> Rule:
 
 
 def process_rules(c: Dict, aliases: Dict[BikeName, BikeId]) -> Rules:
-    aliases = {**aliases, **c.get('aliases', [])}
+    aliases = {**aliases, **c.get('aliases', {})}
     return Rules(
         bike_names={v: k for k, v in aliases.items()},
         components={k: process_component(k, v) for k, v in c.get('components', {}).items()},
