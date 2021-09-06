@@ -12,7 +12,6 @@ from .data import ComponentId
 from .data import ComponentName
 from .data import Rule
 from .data import Rules
-from .data import prune_mapping
 
 config_format_checker = jsonschema.FormatChecker()
 config_schema = {
@@ -51,7 +50,12 @@ config_schema = {
                 },
                 'additionalProperties': {
                     'type': 'object',
-                    'additionalProperties': {'type': 'string'},
+                    'additionalProperties': {
+                        'oneOf': [
+                            {'type': 'null'},
+                            {'type': 'string'},
+                        ],
+                    },
                 },
             },
         },
@@ -88,7 +92,7 @@ def process_rule(r: Dict, aliases: Dict[BikeName, BikeId]) -> Rule:
         else:
             bikes[aliases.get(k, k)] = v
 
-    return Rule(bikes=prune_mapping(bikes), hashtags=prune_mapping(hashtags), **kwargs)
+    return Rule(bikes=bikes, hashtags=hashtags, **kwargs)
 
 
 def process_rules(c: Dict, aliases: Dict[BikeName, BikeId]) -> Rules:

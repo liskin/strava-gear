@@ -51,3 +51,9 @@ def test_rule():
     # … hashtags aren't exclusive though
     assert Rule(hashtags={'#b1': {'c': 'c1', 'd': 'd1'}}) + Rule(hashtags={'#b2': {'c': 'c1'}}) == \
         Rule(hashtags={'#b1': {'c': 'c1', 'd': 'd1'}, '#b2': {'c': 'c1'}})
+
+    # explicit component removal
+    assert Rule(bikes={'b1': {'c': 'c1', 'd': 'd1'}}) + Rule(bikes={'b1': {'c': None}}) == \
+        Rule(bikes={'b1': {'d': 'd1'}})
+    assert Rule(hashtags={'#b1': {'c': 'c1', 'd': 'd1'}}) + Rule(hashtags={'#b1': {'c': None}}) == \
+        Rule(hashtags={'#b1': {'d': 'd1'}})
