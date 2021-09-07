@@ -54,9 +54,7 @@ class FirstLast:
         elif other._fl is None:
             return self
         else:
-            return replace(
-                self,
-                _fl=(min(self.first, other.first), max(self.last, other.last)))
+            return FirstLast(_fl=(min(self.first, other.first), max(self.last, other.last)))
 
     def __lt__(self, other) -> bool:
         if not isinstance(other, FirstLast):
@@ -146,10 +144,11 @@ class Usage:
 
     @staticmethod
     def from_activity(components: Iterable[ComponentId], distance: float, time: float, ts: pd.Timestamp):
+        fl = FirstLast.from_ts(ts)
         return Usage(
             distances={c: distance for c in components},
             times={c: time for c in components},
-            firstlasts={c: FirstLast.from_ts(ts) for c in components})
+            firstlasts={c: fl for c in components})
 
     def __iadd__(self, other) -> Usage:
         if not isinstance(other, Usage):

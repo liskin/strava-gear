@@ -42,3 +42,7 @@ def main(rules, csv, strava_database):
         headers=["id", "name", "distance (km)", "time (hour)", "first … last"],
         floatfmt=".1f",
     ))
+
+
+if __name__ == "__main__":
+    main()
