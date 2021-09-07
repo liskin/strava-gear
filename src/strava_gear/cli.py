@@ -37,9 +37,10 @@ def main(rules, csv, strava_database):
     usage = activities['usage'].sum()
     components = [c.add_usage(usage) for c in rules.components]
 
-    report = [[c.ident, c.name, c.distance / 1000, c.time / 3600] for c in components]
+    components = sorted(components, key=lambda c: c.firstlast)
+    report = [[c.ident, c.name, c.distance / 1000, c.time / 3600, c.firstlast] for c in components]
     print(tabulate(
         report,
-        headers=["id", "name", "distance (km)", "time (hour)"],
+        headers=["id", "name", "distance (km)", "time (hour)", "first … last"],
         floatfmt=".1f",
     ))

@@ -35,4 +35,5 @@ def usage_for_activity(activity):
     return Usage.from_activity(
         components=component_map.values(),
         distance=activity['distance'],
-        time=activity['moving_time'])
+        time=activity['moving_time'],
+        ts=activity['start_date'])
