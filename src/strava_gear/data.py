@@ -168,3 +168,10 @@ class Usage:
         self_copy = replace(self, distances=self.distances.copy(), times=self.times.copy())
         self_copy += other
         return self_copy
+
+
+@dataclass(frozen=True)
+class Result:
+    bike_names: Dict[BikeId, BikeName]
+    bikes: Mapping[BikeId]
+    components: List[Component]

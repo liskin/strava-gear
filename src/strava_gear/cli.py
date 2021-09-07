@@ -33,11 +33,9 @@ def main(rules, csv, strava_database):
     else:
         aliases, activities = read_strava_offline()
     rules = read_rules(rules, aliases=aliases)
-    activities = apply_rules(rules, activities)
-    usage = activities['usage'].sum()
-    components = [c.add_usage(usage) for c in rules.components]
+    res = apply_rules(rules, activities)
 
-    components = sorted(components, key=lambda c: c.firstlast)
+    components = sorted(res.components, key=lambda c: c.firstlast)
     report = [[c.ident, c.name, c.distance / 1000, c.time / 3600, c.firstlast] for c in components]
     print(tabulate(
         report,

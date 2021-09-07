@@ -3,11 +3,13 @@ from itertools import chain
 
 import pandas as pd  # type: ignore [import]
 
+from .data import Result
 from .data import Rule
+from .data import Rules
 from .data import Usage
 
 
-def apply_rules(rules, activities):
+def apply_rules(rules: Rules, activities) -> Result:
     rules_sorted = sorted(rules.rules, key=lambda r: r.since)
     activities_sorted = activities.sort_values('start_date')
 
@@ -18,13 +20,16 @@ def apply_rules(rules, activities):
     # Determine the effective rules for each activity by merging the two sorted series.
     activities_rules = pd.merge_asof(activities_sorted, effective_rules, left_on='start_date', right_on='since')
 
-    usage = activities_rules.apply(usage_for_activity, axis=1)
-    activities_rules['usage'] = usage
+    # Tally up usage.
+    usage = activities_rules.apply(usage_for_activity, axis=1).sum()
 
-    return activities_rules
+    return Result(
+        bike_names=rules.bike_names,
+        bikes=effective_rules['bikes'].iat[-1],
+        components=[c.add_usage(usage) for c in rules.components])
 
 
-def usage_for_activity(activity):
+def usage_for_activity(activity) -> Usage:
     component_map = activity['bikes'].get(activity['gear_id'], {})
 
     for hashtag in (s for s in activity['name'].split() if s.startswith('#')):
