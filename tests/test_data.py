@@ -1,18 +1,18 @@
-import pandas as pd  # type: ignore [import]
 import pytest  # type: ignore [import]
 
 from strava_gear.data import Rule
+from strava_gear.input import parse_datetime
 
 
 def test_rule():
     assert Rule() + Rule() == Rule()
 
     # since taken from right
-    assert Rule(since=pd.to_datetime('2020-01-01')) + Rule(since=pd.to_datetime('2020-01-02T01:00')) == \
-        Rule(since=pd.to_datetime('2020-01-02T01:00'))
+    assert Rule(since=parse_datetime('2020-01-01')) + Rule(since=parse_datetime('2020-01-02T01:00:00')) == \
+        Rule(since=parse_datetime('2020-01-02T01:00:00'))
     with pytest.raises(TypeError):
-        assert Rule(since=pd.to_datetime('2020-01-02')) + Rule(since=pd.to_datetime('2020-01-01T01:00')) == \
-            Rule(since=pd.to_datetime('2020-01-01T01:00'))
+        assert Rule(since=parse_datetime('2020-01-02')) + Rule(since=parse_datetime('2020-01-01T01:00:00')) == \
+            Rule(since=parse_datetime('2020-01-01T01:00:00'))
 
     # neutral value on either side
     assert Rule(bikes={'b1': {'c': 'c1'}}) + Rule() == Rule(bikes={'b1': {'c': 'c1'}})

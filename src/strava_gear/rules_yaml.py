@@ -2,7 +2,6 @@ import datetime
 from typing import Dict
 
 import jsonschema  # type: ignore [import]
-import pandas as pd  # type: ignore [import]
 import yaml
 
 from .data import BikeId
@@ -12,6 +11,7 @@ from .data import ComponentId
 from .data import ComponentName
 from .data import Rule
 from .data import Rules
+from .input import parse_datetime
 
 config_format_checker = jsonschema.FormatChecker()
 config_schema = {
@@ -86,7 +86,9 @@ def process_rule(r: Dict, aliases: Dict[BikeName, BikeId]) -> Rule:
     kwargs = {}
     for k, v in r.items():
         if k == 'since':
-            kwargs[k] = pd.to_datetime(v, utc=True)
+            d = parse_datetime(v)
+            assert d is not None
+            kwargs[k] = d
         elif k.startswith('#'):
             hashtags[k] = v
         else:

@@ -1,7 +1,8 @@
 from itertools import accumulate
 from itertools import chain
-
-import pandas as pd  # type: ignore [import]
+from typing import Dict
+from typing import Iterable
+from typing import List
 
 from .data import Result
 from .data import Rule
@@ -9,31 +10,31 @@ from .data import Rules
 from .data import Usage
 
 
-def apply_rules(rules: Rules, activities) -> Result:
+def apply_rules(rules: Rules, activities: List[Dict]) -> Result:
     rules_sorted = sorted(rules.rules, key=lambda r: r.since)
-    activities_sorted = activities.sort_values('start_date')
+    activities_sorted = sorted(activities, key=lambda a: a['start_date'])
 
     # Determine the effective combinations of rules for all time points where rules change.
     # Rules effective at time T are obtained by combining all rules up to and including time T.
-    effective_rules = pd.DataFrame(accumulate(chain([Rule()], rules_sorted)))
+    effective_rules = list(accumulate(chain([Rule()], rules_sorted)))
 
-    # Determine the effective rules for each activity by merging the two sorted series.
-    activities_rules = pd.merge_asof(activities_sorted, effective_rules, left_on='start_date', right_on='since')
-
-    # Tally up usage.
-    usage = activities_rules.apply(usage_for_activity, axis=1).sum()
+    # Determine the effective rules for each activity by merging the two sorted series,
+    # and tally up usage.
+    usage = Usage()
+    for activity, rule in merge_asof(activities_sorted, effective_rules):
+        usage += usage_for_activity(activity, rule)
 
     return Result(
         bike_names=rules.bike_names,
-        bikes=effective_rules['bikes'].iat[-1],
+        bikes=effective_rules[-1].bikes,
         components=[c.add_usage(usage) for c in rules.components])
 
 
-def usage_for_activity(activity) -> Usage:
-    component_map = activity['bikes'].get(activity['gear_id'], {})
+def usage_for_activity(activity: Dict, rule: Rule) -> Usage:
+    component_map = rule.bikes.get(activity['gear_id'], {})
 
     for hashtag in (s for s in activity['name'].split() if s.startswith('#')):
-        component_map_ht = activity['hashtags'].get(hashtag)
+        component_map_ht = rule.hashtags.get(hashtag)
         if component_map_ht:
             component_map = {**component_map, **component_map_ht}
 
@@ -42,3 +43,15 @@ def usage_for_activity(activity) -> Usage:
         distance=activity['distance'],
         time=activity['moving_time'],
         ts=activity['start_date'])
+
+
+def merge_asof(activities: Iterable[Dict], rules: Iterable[Rule]):
+    rules = iter(rules)
+    rule_cur = next(rules)
+    rule_next = next(rules, None)
+    for activity in activities:
+        assert rule_cur.since <= activity['start_date']
+        while rule_next is not None and rule_next.since <= activity['start_date']:
+            rule_cur, rule_next = rule_next, next(rules, None)
+
+        yield activity, rule_cur

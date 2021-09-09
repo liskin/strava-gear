@@ -1,11 +1,13 @@
+from datetime import datetime
+from datetime import timezone
 from io import StringIO
 import textwrap
-
-import pandas as pd  # type: ignore [import]
 
 from strava_gear.data import Rule
 from strava_gear.data import Rules
 from strava_gear.rules_yaml import read_rules
+
+epoch = datetime.fromtimestamp(0, timezone.utc)
 
 
 def test_read_rules():
@@ -20,7 +22,7 @@ def test_read_rules():
         """
     ) == Rules(
         bike_names={}, components=[],
-        rules=[Rule(bikes={'b1': {}}, hashtags={}, since=pd.to_datetime(0, utc=True))]
+        rules=[Rule(bikes={'b1': {}}, hashtags={}, since=epoch)]
     )
 
     # aliases
@@ -34,7 +36,7 @@ def test_read_rules():
         """
     ) == Rules(
         bike_names={'b1': "city"}, components=[],
-        rules=[Rule(bikes={'b1': {}, 'b2': {}}, hashtags={}, since=pd.to_datetime(0, utc=True))]
+        rules=[Rule(bikes={'b1': {}, 'b2': {}}, hashtags={}, since=epoch)]
     )
     assert rd(
         """
@@ -47,7 +49,7 @@ def test_read_rules():
     ) == Rules(
         # aliases from rules config override aliases from strava
         bike_names={'b1': "city"}, components=[],
-        rules=[Rule(bikes={'b1': {}}, hashtags={}, since=pd.to_datetime(0, utc=True))]
+        rules=[Rule(bikes={'b1': {}}, hashtags={}, since=epoch)]
     )
 
     # TODO: tests for validation

@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from dataclasses import field
 from dataclasses import replace
+from datetime import datetime
+from datetime import timezone
 from functools import total_ordering
 from typing import Dict
 from typing import Iterable
@@ -12,8 +14,6 @@ from typing import Optional
 from typing import Set
 from typing import Tuple
 from typing import TypeVar
-
-import pandas as pd  # type: ignore [import]
 
 T = TypeVar('T')
 
@@ -31,10 +31,10 @@ Mapping = Dict[T, ComponentMap]
 @total_ordering
 @dataclass(frozen=True)
 class FirstLast:
-    _fl: Optional[Tuple[pd.Timestamp, pd.Timestamp]] = None
+    _fl: Optional[Tuple[datetime, datetime]] = None
 
     @staticmethod
-    def from_ts(ts: pd.Timestamp):
+    def from_ts(ts: datetime):
         return FirstLast(_fl=(ts, ts,))
 
     @property
@@ -95,7 +95,7 @@ class Component:
 class Rule:
     bikes: Mapping[BikeId] = field(default_factory=dict)
     hashtags: Mapping[HashTag] = field(default_factory=dict)
-    since: pd.Timestamp = pd.to_datetime(0, utc=True)
+    since: datetime = datetime.fromtimestamp(0, timezone.utc)
 
     def __add__(self, other) -> Rule:
         """
@@ -143,7 +143,7 @@ class Usage:
     firstlasts: Dict[ComponentId, FirstLast] = field(default_factory=dict)
 
     @staticmethod
-    def from_activity(components: Iterable[ComponentId], distance: float, time: float, ts: pd.Timestamp):
+    def from_activity(components: Iterable[ComponentId], distance: float, time: float, ts: datetime):
         fl = FirstLast.from_ts(ts)
         return Usage(
             distances={c: distance for c in components},
