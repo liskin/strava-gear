@@ -10,7 +10,7 @@ from typing import Tuple
 from typing import Union
 
 import appdirs  # type: ignore [import]
-import yaml
+from dateutil.parser import isoparse
 
 from .data import BikeId
 from .data import BikeName
@@ -61,11 +61,11 @@ def read_strava_offline() -> Tuple[Dict[BikeName, BikeId], List[Dict]]:
 
 
 def parse_datetime(d: Optional[Union[str, date, datetime]]) -> Optional[datetime]:
-    if isinstance(d, str):
-        d = yaml.safe_load(d)  # yaml parses enough of ISO8601 for us
+    if d is None or d == '':
+        return None
 
-    if d is None:
-        return d
+    if isinstance(d, str):
+        d = isoparse(d)
 
     if isinstance(d, date):
         if not isinstance(d, datetime):
