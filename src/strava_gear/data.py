@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import defaultdict
 from dataclasses import dataclass
 from dataclasses import field
 from dataclasses import replace
@@ -149,9 +150,9 @@ class Rules:
 
 @dataclass
 class Usage:
-    distances: Dict[ComponentId, float] = field(default_factory=dict)
-    times: Dict[ComponentId, float] = field(default_factory=dict)
-    firstlasts: Dict[ComponentId, FirstLast] = field(default_factory=dict)
+    distances: Dict[ComponentId, float] = field(default_factory=lambda: defaultdict(float))
+    times: Dict[ComponentId, float] = field(default_factory=lambda: defaultdict(float))
+    firstlasts: Dict[ComponentId, FirstLast] = field(default_factory=lambda: defaultdict(FirstLast))
 
     @staticmethod
     def from_activity(components: Iterable[ComponentId], distance: float, time: float, ts: datetime):
@@ -165,17 +166,21 @@ class Usage:
         if not isinstance(other, Usage):
             return NotImplemented
         for k, d in other.distances.items():
-            self.distances[k] = self.distances.get(k, 0) + d
+            self.distances[k] += d
         for k, t in other.times.items():
-            self.times[k] = self.times.get(k, 0) + t
+            self.times[k] += t
         for k, fl in other.firstlasts.items():
-            self.firstlasts[k] = self.firstlasts.get(k, FirstLast()) + fl
+            self.firstlasts[k] += fl
         return self
 
     def __add__(self, other) -> Usage:
         if not isinstance(other, Usage):
             return NotImplemented
-        self_copy = replace(self, distances=self.distances.copy(), times=self.times.copy())
+        self_copy = replace(
+            self,
+            distances=self.distances.copy(),
+            times=self.times.copy(),
+            firstlasts=self.firstlasts.copy())
         self_copy += other
         return self_copy
 
