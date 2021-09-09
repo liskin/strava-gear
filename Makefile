@@ -3,7 +3,7 @@ PYTHON = python3
 VENV = .venv
 VENV_PYTHON = $(VENV)/bin/python
 VENV_DONE = $(VENV)/.done
-VENV_PIP_INSTALL = '.[dev, test, strava-offline]'
+VENV_PIP_INSTALL = '.[dev, test, strava]'
 VENV_SYSTEM_SITE_PACKAGES = $(VENV)/.venv-system-site-packages
 VENV_USE_SYSTEM_SITE_PACKAGES = $(wildcard $(VENV_SYSTEM_SITE_PACKAGES))
 
