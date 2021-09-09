@@ -24,10 +24,14 @@ def apply_rules(rules: Rules, activities: List[Dict]) -> Result:
     for activity, rule in merge_asof(activities_sorted, effective_rules):
         usage += usage_for_activity(activity, rule)
 
-    return Result(
-        bike_names=rules.bike_names,
-        bikes=effective_rules[-1].bikes,
-        components=[c.add_usage(usage) for c in rules.components])
+    # Fill computed data (usage, current assignment) into components.
+    component_assignments = effective_rules[-1].component_assignments()
+    components = [
+        c.add_usage(usage).assign(component_assignments.get(c.ident, None))
+        for c in rules.components
+    ]
+
+    return Result(bike_names=rules.bike_names, components=components)
 
 
 def usage_for_activity(activity: Dict, rule: Rule) -> Usage:

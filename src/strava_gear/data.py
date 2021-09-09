@@ -29,6 +29,7 @@ Seconds = NewType('Seconds', float)
 
 ComponentMap = Dict[ComponentType, ComponentId]
 Mapping = Dict[T, ComponentMap]
+ComponentAssignment = Tuple[BikeId, ComponentType]
 
 
 @total_ordering
@@ -85,6 +86,7 @@ class Component:
     distance: Meters = Meters(0.0)
     time: Seconds = Seconds(0.0)
     firstlast: FirstLast = FirstLast()
+    assignment: Optional[ComponentAssignment] = None
 
     def add_usage(self, usage: Usage) -> Component:
         return replace(
@@ -92,6 +94,9 @@ class Component:
             distance=self.distance + usage.distances.get(self.ident, 0),
             time=self.time + usage.times.get(self.ident, 0),
             firstlast=self.firstlast + usage.firstlasts.get(self.ident, FirstLast()))
+
+    def assign(self, assignment: Optional[ComponentAssignment]) -> Component:
+        return replace(self, assignment=assignment)
 
 
 @dataclass(frozen=True)
@@ -115,6 +120,9 @@ class Rule:
         bikes = prune_mapping(update_mappings(filter_mapping(self.bikes, other_components), other.bikes))
         hashtags = prune_mapping(update_mappings(self.hashtags, other.hashtags))
         return replace(other, bikes=bikes, hashtags=hashtags)
+
+    def component_assignments(self) -> Dict[ComponentId, ComponentAssignment]:
+        return {c: (b, t) for b, m in self.bikes.items() for t, c in m.items()}
 
 
 def prune_mapping(m: Mapping[T]) -> Mapping[T]:
@@ -175,5 +183,4 @@ class Usage:
 @dataclass(frozen=True)
 class Result:
     bike_names: Dict[BikeId, BikeName]
-    bikes: Mapping[BikeId]
     components: List[Component]
