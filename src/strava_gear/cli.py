@@ -29,7 +29,7 @@ from .rules_yaml import read_rules
     help="Location of the strava-offline database")
 @click.option(
     '--report', type=click.Choice(reports.keys()),
-    default='components', show_default=True,
+    default='bikes', show_default=True,
     help="Type of report")
 def main(rules, csv, strava_database, report):
     if csv:
