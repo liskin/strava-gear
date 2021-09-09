@@ -5,6 +5,7 @@
 [![PyPI Python Version badge](https://img.shields.io/pypi/pyversions/strava-gear)](https://pypi.org/project/strava-gear/)
 [![PyPI Version badge](https://img.shields.io/pypi/v/strava-gear)](https://pypi.org/project/strava-gear/)
 ![License badge](https://img.shields.io/github/license/liskin/strava-gear)
+[![Chat at Gitter](https://badges.gitter.im/liskin/strava-gear.svg)](https://gitter.im/liskin/strava-gear)
 
 Simple, yet powerful, local and open-source gear tracker for Strava. Uses
 [strava-offline][] to keep a local database of activities and then reads
@@ -32,7 +33,7 @@ Compared to [Strava My Gear][]:
 
 ```yaml
 aliases:
-  # optional, uses bike/shoes names from Strava by default
+  # optional, uses bike names from Strava by default
   city: "b123456"
   gravel: "b234567"
   road: "b345678"
