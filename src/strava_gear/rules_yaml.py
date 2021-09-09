@@ -1,5 +1,8 @@
 import datetime
+from itertools import chain
 from typing import Dict
+from typing import Iterable
+from typing import Iterator
 
 import jsonschema  # type: ignore [import]
 import yaml
@@ -83,6 +86,15 @@ def process_component(k: str, v) -> Component:
             time=Seconds(v.get('hours', 0) * 3600.0))
 
 
+def undeclared_components(rules: Iterable[Rule], components: Iterable[Component]) -> Iterator[Component]:
+    component_ids = {c.ident for c in components}
+    for r in rules:
+        for m in chain(r.bikes.values(), r.hashtags.values()):
+            for c in m.values():
+                if c is not None and c not in component_ids:
+                    yield Component(ident=ComponentId(c), name=ComponentName(c))
+
+
 def process_rule(r: Dict, aliases: Dict[BikeName, BikeId]) -> Rule:
     bikes = {}
     hashtags = {}
@@ -102,10 +114,15 @@ def process_rule(r: Dict, aliases: Dict[BikeName, BikeId]) -> Rule:
 
 def process_rules(c: Dict, aliases: Dict[BikeName, BikeId]) -> Rules:
     aliases = {**aliases, **c.get('aliases', {})}
+    components = [process_component(k, v) for k, v in c.get('components', {}).items()]
+    rules = [process_rule(r, aliases=aliases) for r in c.get('rules', [])]
+
+    components.extend(undeclared_components(rules, components))
+
     return Rules(
         bike_names={v: k for k, v in aliases.items()},
-        components=[process_component(k, v) for k, v in c.get('components', {}).items()],
-        rules=[process_rule(r, aliases=aliases) for r in c.get('rules', [])],
+        components=components,
+        rules=rules,
     )
 
 
