@@ -24,6 +24,9 @@ BikeId = NewType('BikeId', str)
 BikeName = NewType('BikeName', str)
 HashTag = NewType('HashTag', str)
 
+Meters = NewType('Meters', float)
+Seconds = NewType('Seconds', float)
+
 ComponentMap = Dict[ComponentType, ComponentId]
 Mapping = Dict[T, ComponentMap]
 
@@ -79,8 +82,8 @@ class FirstLast:
 class Component:
     ident: ComponentId
     name: ComponentName
-    distance: float = 0  # meters
-    time: float = 0  # seconds
+    distance: Meters = Meters(0.0)
+    time: Seconds = Seconds(0.0)
     firstlast: FirstLast = FirstLast()
 
     def add_usage(self, usage: Usage) -> Component:

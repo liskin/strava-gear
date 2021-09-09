@@ -9,8 +9,10 @@ from .data import BikeName
 from .data import Component
 from .data import ComponentId
 from .data import ComponentName
+from .data import Meters
 from .data import Rule
 from .data import Rules
+from .data import Seconds
 from .input import parse_datetime
 
 config_format_checker = jsonschema.FormatChecker()
@@ -74,10 +76,11 @@ def process_component(k: str, v) -> Component:
     elif isinstance(v, str):
         return Component(ident=ComponentId(k), name=ComponentName(v))
     else:
-        name = v.get('name', k)
-        distance = v.get('kms', 0) * 1000
-        time = v.get('hours', 0) * 3600
-        return Component(ident=ComponentId(k), name=ComponentName(name), distance=distance, time=time)
+        return Component(
+            ident=ComponentId(k),
+            name=ComponentName(v.get('name', k)),
+            distance=Meters(v.get('kms', 0) * 1000.0),
+            time=Seconds(v.get('hours', 0) * 3600.0))
 
 
 def process_rule(r: Dict, aliases: Dict[BikeName, BikeId]) -> Rule:
