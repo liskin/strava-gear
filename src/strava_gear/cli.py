@@ -2,11 +2,11 @@ import os
 
 import appdirs  # type: ignore [import]
 import click
-from tabulate import tabulate
 
 from .core import apply_rules
 from .input import read_input_csv
 from .input import read_strava_offline
+from .report import reports
 from .rules_yaml import read_rules
 
 
@@ -27,21 +27,18 @@ from .rules_yaml import read_rules
     default=os.path.join(appdirs.user_data_dir(appname='strava_offline'), 'strava.sqlite'),
     show_default=True,
     help="Location of the strava-offline database")
-def main(rules, csv, strava_database):
+@click.option(
+    '--report', type=click.Choice(reports.keys()),
+    default='components', show_default=True,
+    help="Type of report")
+def main(rules, csv, strava_database, report):
     if csv:
         aliases, activities = {}, read_input_csv(csv)
     else:
         aliases, activities = read_strava_offline()
     rules = read_rules(rules, aliases=aliases)
     res = apply_rules(rules, activities)
-
-    components = sorted(res.components, key=lambda c: c.firstlast)
-    report = [[c.ident, c.name, c.distance / 1000, c.time / 3600, c.firstlast] for c in components]
-    print(tabulate(
-        report,
-        headers=["id", "name", "distance (km)", "time (hour)", "first … last"],
-        floatfmt=".1f",
-    ))
+    print(reports[report](res))
 
 
 if __name__ == "__main__":
