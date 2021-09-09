@@ -11,10 +11,8 @@ from .data import FirstLast
 from .data import Result
 
 
-def report_components(res: Result, only_assigned: bool) -> str:
+def report_components(res: Result) -> str:
     components: Iterable[Component] = sorted(res.components, key=lambda c: c.firstlast)
-    if only_assigned:
-        components = (c for c in components if c.assignment)
     return tabulate(
         [[c.ident, c.name, c.distance / 1000, c.time / 3600, c.firstlast] for c in components],
         headers=["id", "name", "km", "hour", "first … last"],
@@ -61,7 +59,6 @@ def bikes_firstlast(res: Result) -> Dict[BikeId, FirstLast]:
 
 
 reports = {
-    'components': partial(report_components, only_assigned=True),
-    'components-all': partial(report_components, only_assigned=False),
+    'components': partial(report_components),
     'bikes': report_bikes,
 }
