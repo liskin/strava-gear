@@ -11,14 +11,14 @@ from .data import FirstLast
 from .data import Result
 
 
-def report(f, res: Result, show_name: bool = True, show_first_last: bool = True) -> str:
+def report(f, res: Result, show_name: bool, show_first_last: bool, tablefmt: str) -> str:
     def cols(d: Dict) -> Dict:
         if not show_name:
             del d["name"]
         if not show_first_last:
             del d["first … last"]
         return d
-    return tabulate([cols(d) for d in f(res)], headers="keys", floatfmt=".1f")
+    return tabulate([cols(d) for d in f(res)], headers="keys", floatfmt=".1f", tablefmt=tablefmt)
 
 
 def report_components(res: Result) -> Iterator[Dict]:
