@@ -1,4 +1,5 @@
 from collections import defaultdict
+import csv
 from functools import partial
 from typing import Dict
 from typing import Iterator
@@ -11,14 +12,24 @@ from .data import FirstLast
 from .data import Result
 
 
-def report(f, res: Result, show_name: bool, show_first_last: bool, tablefmt: str) -> str:
+def report(f, res: Result, output, tablefmt: str, show_name: bool, show_first_last: bool):
     def cols(d: Dict) -> Dict:
         if not show_name:
             del d["name"]
         if not show_first_last:
             del d["first … last"]
         return d
-    return tabulate([cols(d) for d in f(res)], headers="keys", floatfmt=".1f", tablefmt=tablefmt)
+
+    table = [cols(d) for d in f(res)]
+    if not table:
+        return
+
+    if tablefmt == 'csv':
+        writer = csv.DictWriter(output, fieldnames=list(table[0].keys()))
+        writer.writeheader()
+        writer.writerows(table)
+    else:
+        print(tabulate(table, headers="keys", floatfmt=".1f", tablefmt=tablefmt), file=output)
 
 
 def report_components(res: Result) -> Iterator[Dict]:

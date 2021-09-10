@@ -36,7 +36,10 @@ from .rules_yaml import read_rules
     help="Type of report")
 @click.option(
     '-f', '--tablefmt', type=str, default='simple', show_default=True,
-    help="Table format, see https://github.com/astanin/python-tabulate#table-format")
+    help="""
+    Table format, see <https://github.com/astanin/python-tabulate#table-format>.
+    Additionally, "csv" is supported for CSV output.
+    """)
 @click.option(
     '--show-name/--hide-name', default=True, show_default=True,
     help="Show long component names")
@@ -50,7 +53,7 @@ def main(rules, csv, strava_database, output, report, tablefmt, show_name, show_
         aliases, activities = read_strava_offline()
     rules = read_rules(rules, aliases=aliases)
     res = apply_rules(rules, activities)
-    print(reports[report](res, tablefmt=tablefmt, show_name=show_name, show_first_last=show_first_last), file=output)
+    reports[report](res, output=output, tablefmt=tablefmt, show_name=show_name, show_first_last=show_first_last)
 
 
 if __name__ == "__main__":
