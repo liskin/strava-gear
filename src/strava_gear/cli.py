@@ -31,14 +31,20 @@ from .rules_yaml import read_rules
     '--report', type=click.Choice(reports.keys()),
     default='bikes', show_default=True,
     help="Type of report")
-def main(rules, csv, strava_database, report):
+@click.option(
+    '--show-name/--hide-name', default=True, show_default=True,
+    help="Show long component names")
+@click.option(
+    '--show-first-last/--hide-first-last', default=True, show_default=True,
+    help="Show first/last usage of components")
+def main(rules, csv, strava_database, report, show_name, show_first_last):
     if csv:
         aliases, activities = {}, read_input_csv(csv)
     else:
         aliases, activities = read_strava_offline()
     rules = read_rules(rules, aliases=aliases)
     res = apply_rules(rules, activities)
-    print(reports[report](res))
+    print(reports[report](res, show_name=show_name, show_first_last=show_first_last))
 
 
 if __name__ == "__main__":
