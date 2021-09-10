@@ -18,7 +18,7 @@ from typing import TypeVar
 
 T = TypeVar('T')
 
-ComponentType = NewType('ComponentType', str)
+ComponentRole = NewType('ComponentRole', str)
 ComponentId = NewType('ComponentId', str)
 ComponentName = NewType('ComponentName', str)
 BikeId = NewType('BikeId', str)
@@ -28,9 +28,9 @@ HashTag = NewType('HashTag', str)
 Meters = NewType('Meters', float)
 Seconds = NewType('Seconds', float)
 
-ComponentMap = Dict[ComponentType, ComponentId]
+ComponentMap = Dict[ComponentRole, ComponentId]
 Mapping = Dict[T, ComponentMap]
-ComponentAssignment = Tuple[BikeId, ComponentType]
+ComponentAssignment = Tuple[BikeId, ComponentRole]
 
 
 @total_ordering
@@ -172,17 +172,6 @@ class Usage:
         for k, fl in other.firstlasts.items():
             self.firstlasts[k] += fl
         return self
-
-    def __add__(self, other) -> Usage:
-        if not isinstance(other, Usage):
-            return NotImplemented
-        self_copy = replace(
-            self,
-            distances=self.distances.copy(),
-            times=self.times.copy(),
-            firstlasts=self.firstlasts.copy())
-        self_copy += other
-        return self_copy
 
 
 @dataclass(frozen=True)
