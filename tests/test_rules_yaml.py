@@ -5,7 +5,7 @@ import textwrap
 
 from strava_gear.data import Rule
 from strava_gear.data import Rules
-from strava_gear.rules_yaml import read_rules
+from strava_gear.input.rules import read_rules
 
 epoch = datetime.fromtimestamp(0, timezone.utc)
 

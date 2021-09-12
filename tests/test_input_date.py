@@ -3,7 +3,7 @@ from datetime import timezone
 
 import pytest  # type: ignore [import]
 
-from strava_gear.input import parse_datetime
+from strava_gear.input.date import parse_datetime
 
 
 def test_parse_datetime():

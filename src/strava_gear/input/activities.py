@@ -1,19 +1,15 @@
 import csv
-from datetime import date
-from datetime import datetime
 from pathlib import Path
 import sqlite3
 from typing import Dict
 from typing import List
-from typing import Optional
 from typing import Tuple
-from typing import Union
 
 import appdirs  # type: ignore [import]
-from dateutil.parser import isoparse
 
-from .data import BikeId
-from .data import BikeName
+from ..data import BikeId
+from ..data import BikeName
+from .date import parse_datetime
 
 
 def read_input_csv(inp) -> List[Dict]:
@@ -58,18 +54,3 @@ def read_strava_offline() -> Tuple[Dict[BikeName, BikeId], List[Dict]]:
             activities.append({**r, 'start_date': parse_datetime(r['start_date'])})
 
         return aliases, activities
-
-
-def parse_datetime(d: Optional[Union[str, date, datetime]]) -> Optional[datetime]:
-    if d is None or d == '':
-        return None
-
-    if isinstance(d, str):
-        d = isoparse(d)
-
-    if isinstance(d, date):
-        if not isinstance(d, datetime):
-            d = datetime(d.year, d.month, d.day)
-        return d.astimezone()
-    else:
-        raise ValueError

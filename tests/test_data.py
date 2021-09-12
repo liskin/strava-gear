@@ -1,7 +1,7 @@
 import pytest  # type: ignore [import]
 
 from strava_gear.data import Rule
-from strava_gear.input import parse_datetime
+from strava_gear.input.date import parse_datetime
 
 
 def test_rule():

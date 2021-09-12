@@ -4,10 +4,10 @@ import appdirs  # type: ignore [import]
 import click
 
 from .core import apply_rules
-from .input import read_input_csv
-from .input import read_strava_offline
+from .input.activities import read_input_csv
+from .input.activities import read_strava_offline
+from .input.rules import read_rules
 from .report import reports
-from .rules_yaml import read_rules
 
 
 @click.command(context_settings={'max_content_width': 120})
