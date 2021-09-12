@@ -107,7 +107,8 @@ omit the `[strava]` bit to avoid installing strava-offline twice.
   You'll also notice that the component ids are shown twice. This is because
   if you [declare your components explicitly](#rules-syntax), you can assign
   long names to them, such as "Shimano CN-HG701-11 with Quick-Link". This
-  column can be hidden using the `--hide-name` command-line option.
+  column can be hidden using the `--hide-name` [command-line
+  option](#command-line-options).
 
   If you want to see all components regardless of their current assignment,
   ordered by last usage, just ask for the `components` report:
@@ -225,21 +226,21 @@ rules:
 # etc.).
 components:
   # The key is component id, the value is component name:
-  grx-chain-1: "Shimano CN-HG701-11 (Quick-Link)"
+  chain11-1: "Shimano CN-HG701-11 (Quick-Link)"
 
   # To specify initial usage, the value must be an object instead:
-  grx-chain-2:
+  chain11-2:
     name: "Shimano CN-HG701-11 (connecting pin)"
     kms: 1000
     hours: 50
 
   # A component with same id and name can also be declared explicitly,
   # although it doesn't need to be.
-  grx-chain-3:
+  chain11-3:
 
 # The aliases section can be omitted if you just want to use bike names as
 # defined in Strava. If you, however, want to use shorter bike ids, or if
-# you often rename your bikes on Strava and want to keep the names stable
+# you often rename your bikes in Strava and want to keep the names stable
 # here, you can define aliases explicitly.
 aliases:
   city: b123456    # To get these ids, visit https://www.strava.com/settings/gear
