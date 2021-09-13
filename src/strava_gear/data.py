@@ -110,9 +110,10 @@ class Rule:
 
     def __add__(self, other) -> Rule:
         """
-        Combine two rules. The second rule's since must be later than the first. Component mappings
-        in the second rule then override those in the first. Additionally, components newly assigned
-        to another bike are automatically removed from the old one.
+        Combine two rules. The second rule's since must be equal or later than the first.
+        Component mappings in the second rule then override those in the first.
+        Additionally, components newly assigned to another bike are automatically removed
+        from the old one.
         """
         if not isinstance(other, Rule):
             return NotImplemented
