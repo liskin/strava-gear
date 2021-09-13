@@ -1,20 +1,17 @@
-from datetime import datetime
-from datetime import timezone
 from io import StringIO
 import textwrap
 
+from strava_gear.data import Component
 from strava_gear.data import Rule
 from strava_gear.data import Rules
 from strava_gear.input.rules import read_rules
 
-epoch = datetime.fromtimestamp(0, timezone.utc)
+
+def rd(yaml, **kwargs):
+    return read_rules(StringIO(textwrap.dedent(yaml.strip("\n"))), **kwargs)
 
 
-def test_read_rules():
-    def rd(yaml, **kwargs):
-        return read_rules(StringIO(textwrap.dedent(yaml.strip("\n"))), **kwargs)
-
-    # minimal config
+def test_minimal():
     assert rd(
         """
         rules:
@@ -22,10 +19,11 @@ def test_read_rules():
         """
     ) == Rules(
         bike_names={}, components=[],
-        rules=[Rule(bikes={'b1': {}}, hashtags={}, since=epoch)]
+        rules=[Rule(bikes={'b1': {}})]
     )
 
-    # aliases
+
+def test_aliases():
     assert rd(
         """
         aliases:
@@ -36,8 +34,9 @@ def test_read_rules():
         """
     ) == Rules(
         bike_names={'b1': "city"}, components=[],
-        rules=[Rule(bikes={'b1': {}, 'b2': {}}, hashtags={}, since=epoch)]
+        rules=[Rule(bikes={'b1': {}, 'b2': {}})]
     )
+
     assert rd(
         """
         aliases:
@@ -49,7 +48,38 @@ def test_read_rules():
     ) == Rules(
         # aliases from rules config override aliases from strava
         bike_names={'b1': "city"}, components=[],
-        rules=[Rule(bikes={'b1': {}}, hashtags={}, since=epoch)]
+        rules=[Rule(bikes={'b1': {}})]
     )
 
-    # TODO: tests for validation
+
+def test_undeclared_components():
+    assert rd(
+        """
+        rules:
+        - b1:
+            role: c1
+            role2: c2
+        """
+    ) == Rules(
+        bike_names={},
+        components=[Component('c1', 'c1'), Component('c2', 'c2')],
+        rules=[Rule(bikes={'b1': {'role': 'c1', 'role2': 'c2'}})]
+    )
+
+    assert rd(
+        """
+        rules:
+        - b1:
+            role: c1
+        - b2:
+            role: c1
+        """
+    ) == Rules(
+        bike_names={},
+        components=[Component('c1', 'c1')],
+        rules=[Rule(bikes={'b1': {'role': 'c1'}}), Rule(bikes={'b2': {'role': 'c1'}})]
+    )
+
+
+# TODO: tests for validation
+# TODO: exclusive components in bikes in one rule

@@ -1,5 +1,4 @@
 import datetime
-from itertools import chain
 from typing import Dict
 from typing import Iterable
 from typing import Iterator
@@ -87,12 +86,12 @@ def process_component(k: str, v) -> Component:
 
 
 def undeclared_components(rules: Iterable[Rule], components: Iterable[Component]) -> Iterator[Component]:
-    component_ids = {c.ident for c in components}
+    declared_components = {c.ident for c in components}
     for r in rules:
-        for m in chain(r.bikes.values(), r.hashtags.values()):
-            for c in m.values():
-                if c is not None and c not in component_ids:
-                    yield Component(ident=ComponentId(c), name=ComponentName(c))
+        for c in r.all_component_ids():
+            if c not in declared_components:
+                declared_components.add(c)
+                yield Component(ident=ComponentId(c), name=ComponentName(c))
 
 
 def process_rule(r: Dict, aliases: Dict[BikeName, BikeId]) -> Rule:

@@ -7,8 +7,10 @@ from dataclasses import replace
 from datetime import datetime
 from datetime import timezone
 from functools import total_ordering
+from itertools import chain
 from typing import Dict
 from typing import Iterable
+from typing import Iterator
 from typing import List
 from typing import NewType
 from typing import Optional
@@ -124,6 +126,13 @@ class Rule:
 
     def component_assignments(self) -> Dict[ComponentId, ComponentAssignment]:
         return {c: (b, t) for b, m in self.bikes.items() for t, c in m.items()}
+
+    def all_component_ids(self) -> Iterator[ComponentId]:
+        """Return all component ids mentioned in this rule."""
+        for m in chain(self.bikes.values(), self.hashtags.values()):
+            for c in m.values():
+                if c is not None:
+                    yield c
 
 
 def prune_mapping(m: Mapping[T]) -> Mapping[T]:
