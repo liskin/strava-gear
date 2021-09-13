@@ -50,7 +50,7 @@ def main(rules, csv, strava_database, output, report, tablefmt, show_name, show_
     if csv:
         aliases, activities = {}, read_input_csv(csv)
     else:
-        aliases, activities = read_strava_offline()
+        aliases, activities = read_strava_offline(strava_database)
     rules = read_rules(rules, aliases=aliases)
     res = apply_rules(rules, activities)
     reports[report](res, output=output, tablefmt=tablefmt, show_name=show_name, show_first_last=show_first_last)

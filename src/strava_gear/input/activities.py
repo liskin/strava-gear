@@ -1,11 +1,8 @@
 import csv
-from pathlib import Path
 import sqlite3
 from typing import Dict
 from typing import List
 from typing import Tuple
-
-import appdirs  # type: ignore [import]
 
 from ..data import BikeId
 from ..data import BikeName
@@ -35,11 +32,10 @@ def read_input_csv(inp) -> List[Dict]:
     return activities
 
 
-def read_strava_offline() -> Tuple[Dict[BikeName, BikeId], List[Dict]]:
+def read_strava_offline(db_filename: str) -> Tuple[Dict[BikeName, BikeId], List[Dict]]:
     """
     Load activities from strava-offline database.
     """
-    db_filename = Path(appdirs.user_data_dir(appname='strava_offline')) / 'strava.sqlite'
     with sqlite3.connect(db_filename) as db:
         db.row_factory = sqlite3.Row
 
