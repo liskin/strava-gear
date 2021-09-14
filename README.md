@@ -24,8 +24,8 @@ Compared to [Strava My Gear][]:
 
 Planned, not yet implemented features:
 
-* configurable alerts that a component might be worn out and needs servicing
-  or replacing
+* [configurable alerts that a component might be worn out and needs servicing
+  or replacing](https://github.com/liskin/strava-gear/issues/3)
 
 [strava-offline]: https://github.com/liskin/strava-offline#readme
 [Strava]: https://strava.com/
