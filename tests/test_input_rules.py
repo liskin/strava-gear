@@ -7,6 +7,7 @@ import pytest  # type: ignore [import]
 from strava_gear.data import Component
 from strava_gear.data import Rule
 from strava_gear.data import Rules
+from strava_gear.input.rules import check_component_duplicities
 from strava_gear.input.rules import read_rules
 
 
@@ -95,7 +96,20 @@ def test_validation():
     assert "unexpected" in str(e.value)
     assert list(e.value.absolute_path) == []
 
+    with pytest.raises(Exception) as e:
+        rd("rules: [{b1: {r1: c1, r2: c1}}]")
+    assert "Duplicate components" in str(e.value)
+
     # TODO: more tests for validation
 
 
-# TODO: exclusive components in bikes in one rule
+def test_check_component_duplicities():
+    assert check_component_duplicities() == set()
+
+    assert check_component_duplicities(hashtags={'#a': {'r1': 'c1'}}) == set([])
+    assert check_component_duplicities(hashtags={'#a': {'r1': 'c1'}, '#b': {'r1': 'c1'}}) == set([])
+    assert check_component_duplicities(hashtags={'#a': {'r1': 'c1', 'r2': 'c1'}}) == set(['c1'])
+
+    assert check_component_duplicities(bikes={'b1': {'r1': 'c1'}}) == set([])
+    assert check_component_duplicities(bikes={'b1': {'r1': 'c1', 'r2': 'c1'}}) == set(['c1'])
+    assert check_component_duplicities(bikes={'b1': {'r1': 'c1'}, 'b2': {'r1': 'c1'}}) == set(['c1'])

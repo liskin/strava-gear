@@ -1,3 +1,4 @@
+from collections import Counter
 import datetime
 from typing import Dict
 from typing import Iterable
@@ -11,6 +12,8 @@ from ..data import BikeName
 from ..data import Component
 from ..data import ComponentId
 from ..data import ComponentName
+from ..data import HashTag
+from ..data import Mapping
 from ..data import Meters
 from ..data import Rule
 from ..data import Rules
@@ -108,7 +111,28 @@ def process_rule(r: Dict, aliases: Dict[BikeName, BikeId]) -> Rule:
         else:
             bikes[aliases.get(k, k)] = v
 
+    duplicates = check_component_duplicities(bikes=bikes, hashtags=hashtags)
+    if duplicates:
+        raise Exception(f"Duplicate components in rule {r}: {duplicates}")
+
     return Rule(bikes=bikes, hashtags=hashtags, **kwargs)
+
+
+def check_component_duplicities(bikes: Mapping[BikeId] = {}, hashtags: Mapping[HashTag] = {}) -> Iterable[ComponentId]:
+    duplicates = set()
+
+    # no hashtag may have a component assigned to multiple roles
+    for cm in hashtags.values():
+        for c, count in Counter(cm.values()).items():
+            if c is not None and count > 1:
+                duplicates.add(c)
+
+    # no component may be assigned to multiple roles or bikes
+    for c, count in Counter(c for cm in bikes.values() for c in cm.values()).items():
+        if c is not None and count > 1:
+            duplicates.add(c)
+
+    return duplicates
 
 
 def process_rules(c: Dict, aliases: Dict[BikeName, BikeId]) -> Rules:
