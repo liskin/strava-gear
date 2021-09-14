@@ -4,6 +4,7 @@ import appdirs  # type: ignore [import]
 import click
 
 from .core import apply_rules
+from .core import warn_unknown_bikes
 from .input.activities import read_input_csv
 from .input.activities import read_strava_offline
 from .input.rules import read_rules
@@ -54,6 +55,7 @@ def main(rules, csv, strava_database, output, report, tablefmt, show_name, show_
     rules = read_rules(rules, aliases=aliases)
     res = apply_rules(rules, activities)
     reports[report](res, output=output, tablefmt=tablefmt, show_name=show_name, show_first_last=show_first_last)
+    warn_unknown_bikes(rules, activities)
 
 
 if __name__ == "__main__":

@@ -157,6 +157,9 @@ class Rules:
     components: List[Component]
     rules: List[Rule]
 
+    def all_rule_bike_ids(self) -> Set[BikeId]:
+        return set(b for r in self.rules for b in r.bikes.keys())
+
 
 @dataclass
 class Usage:

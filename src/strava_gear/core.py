@@ -3,6 +3,7 @@ from itertools import chain
 from typing import Dict
 from typing import Iterable
 from typing import List
+from warnings import warn
 
 from .data import Result
 from .data import Rule
@@ -59,3 +60,12 @@ def merge_asof(activities: Iterable[Dict], rules: Iterable[Rule]):
             rule_cur, rule_next = rule_next, next(rules, None)
 
         yield activity, rule_cur
+
+
+def warn_unknown_bikes(rules: Rules, activities: List[Dict]) -> None:
+    known_bikes = set(rules.bike_names.keys())
+    used_gear = set(activity['gear_id'] for activity in activities if activity['gear_id'])
+
+    unknown_bikes = rules.all_rule_bike_ids() - known_bikes - used_gear
+    if unknown_bikes:
+        warn(f"Unknown bikes in rules, possibly a typo: {unknown_bikes}")
