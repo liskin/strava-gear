@@ -1,6 +1,9 @@
 from io import StringIO
 import textwrap
 
+from jsonschema.exceptions import ValidationError  # type: ignore [import]
+import pytest  # type: ignore [import]
+
 from strava_gear.data import Component
 from strava_gear.data import Rule
 from strava_gear.data import Rules
@@ -81,5 +84,18 @@ def test_undeclared_components():
     )
 
 
-# TODO: tests for validation
+def test_validation():
+    with pytest.raises(ValidationError) as e:
+        rd("rules: []")
+    assert "[] is too short" in str(e.value)
+    assert list(e.value.absolute_path) == ['rules']
+
+    with pytest.raises(ValidationError) as e:
+        rd("xxx:")
+    assert "unexpected" in str(e.value)
+    assert list(e.value.absolute_path) == []
+
+    # TODO: more tests for validation
+
+
 # TODO: exclusive components in bikes in one rule
