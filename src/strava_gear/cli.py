@@ -1,7 +1,7 @@
 import os
 
-import appdirs  # type: ignore [import]
 import click
+import platformdirs
 
 from .core import apply_rules
 from .core import warn_unknown_bikes
@@ -14,7 +14,7 @@ from .report import reports
 @click.command(context_settings={'max_content_width': 120})
 @click.option(
     '--rules', type=click.File('r'),
-    default=os.path.join(appdirs.user_config_dir(appname=__package__), 'rules.yaml'),
+    default=os.path.join(platformdirs.user_config_dir(appname=__package__), 'rules.yaml'),
     show_default=True,
     help="Rules configuration (bikes, components, ...)")
 @click.option(
@@ -25,7 +25,7 @@ from .report import reports
     """)
 @click.option(
     '--strava-database', type=click.Path(),
-    default=os.path.join(appdirs.user_data_dir(appname='strava_offline'), 'strava.sqlite'),
+    default=os.path.join(platformdirs.user_data_dir(appname='strava_offline'), 'strava.sqlite'),
     show_default=True,
     help="Location of the strava-offline database")
 @click.option(
