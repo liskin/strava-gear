@@ -16,6 +16,8 @@ def rd(yaml, **kwargs):
 
 
 def test_minimal():
+    assert rd("rules: [{}]") == Rules(bike_names={}, components=[], rules=[Rule()])
+
     assert rd(
         """
         rules:
@@ -85,7 +87,14 @@ def test_undeclared_components():
     )
 
 
-def test_validation():
+def test_validation_ok():
+    assert rd("rules:\n - since: 2021-01-01")
+    assert rd("rules:\n - since: 2016-05-23T19:30:00+02:00")
+    assert rd("rules:\n - since: 2020-05-01T14:00")
+    assert rd("rules:\n - since: 2020-05-01T14:00+02:00")
+
+
+def test_validation_fails():
     with pytest.raises(ValidationError) as e:
         rd("rules: []")
     assert "[] is too short" in str(e.value)
@@ -99,6 +108,21 @@ def test_validation():
     with pytest.raises(Exception) as e:
         rd("rules: [{b1: {r1: c1, r2: c1}}]")
     assert "Duplicate components" in str(e.value)
+
+    with pytest.raises(ValidationError) as e:
+        rd("rules: [since:]")
+    assert "is not a 'datetime'" in str(e.value)
+    assert list(e.value.absolute_path) == ['rules', 0, 'since']
+
+    with pytest.raises(ValidationError) as e:
+        rd("rules: [since: 1]")
+    assert "is not a 'datetime'" in str(e.value)
+    assert list(e.value.absolute_path) == ['rules', 0, 'since']
+
+    with pytest.raises(ValidationError) as e:
+        rd("rules: [since: 2021-01-1]")
+    assert "is not a 'datetime'" in str(e.value)
+    assert list(e.value.absolute_path) == ['rules', 0, 'since']
 
     # TODO: more tests for validation
 

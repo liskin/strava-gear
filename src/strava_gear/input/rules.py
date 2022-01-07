@@ -72,7 +72,13 @@ config_schema = {
 
 @config_format_checker.checks('datetime')
 def format_checker_datetime(d):
-    return isinstance(d, (datetime.datetime, datetime.date,))
+    if isinstance(d, str):
+        try:
+            return parse_datetime(d) is not None
+        except Exception:
+            return False
+    else:
+        return isinstance(d, (datetime.datetime, datetime.date,))
 
 
 def process_component(k: str, v) -> Component:
