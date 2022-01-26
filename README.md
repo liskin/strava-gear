@@ -66,6 +66,11 @@ omit the `[strava]` bit to avoid installing strava-offline twice.
   permissions. Should you run into any trouble at this point, consult
   [strava-offline][] readme or open an issue.
 
+  If you make changes to older activities (to assign a different bike to a
+  ride, for example), you may need a `--full` re-sync rathen than the default
+  incremental one. See the [note about incremental synchronization](https://github.com/liskin/strava-offline#note-about-incremental-synchronization)
+  for a detailed explanation.
+
 * Create `~/.config/strava_gear/rules.yaml` (the location will be different on
   Windows/MacOS, please consult `--help` or just use `--rules` explicitly) and
   define components and rules. The complete format of the `rules.yaml` file is
