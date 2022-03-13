@@ -1,15 +1,17 @@
 import csv
+from os import PathLike
 import sqlite3
 from typing import Dict
 from typing import List
 from typing import Tuple
+from typing import Union
 
 from ..data import BikeId
 from ..data import BikeName
 from .date import parse_datetime
 
 
-def read_input_csv(inp) -> List[Dict]:
+def read_input_csv(inp) -> Tuple[Dict[BikeName, BikeId], List[Dict]]:
     """
     Load activities from CSV generated from this command:
 
@@ -29,10 +31,10 @@ def read_input_csv(inp) -> List[Dict]:
             'start_date': parse_datetime(r['start_date']),
         })
 
-    return activities
+    return {}, activities
 
 
-def read_strava_offline(db_filename: str) -> Tuple[Dict[BikeName, BikeId], List[Dict]]:
+def read_strava_offline(db_filename: Union[str, PathLike]) -> Tuple[Dict[BikeName, BikeId], List[Dict]]:
     """
     Load activities from strava-offline database.
     """

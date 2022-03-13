@@ -1,4 +1,6 @@
-import os
+from pathlib import Path
+from typing import Optional
+from typing import TextIO
 
 import click
 import platformdirs
@@ -13,8 +15,8 @@ from .report import reports
 
 @click.command(context_settings={'max_content_width': 120})
 @click.option(
-    '--rules', type=click.File('r'),
-    default=os.path.join(platformdirs.user_config_dir(appname=__package__), 'rules.yaml'),
+    '--rules', 'rules_input', type=click.File('r'),
+    default=platformdirs.user_config_path(appname=__package__) / 'rules.yaml',
     show_default=True,
     help="Rules configuration (bikes, components, ...)")
 @click.option(
@@ -24,8 +26,8 @@ from .report import reports
     (columns: name, gear_id, start_date, moving_time, distance)
     """)
 @click.option(
-    '--strava-database', type=click.Path(),
-    default=os.path.join(platformdirs.user_data_dir(appname='strava_offline'), 'strava.sqlite'),
+    '--strava-database', type=click.Path(path_type=Path),  # type: ignore [type-var] # debian typeshed compat
+    default=platformdirs.user_data_path(appname='strava_offline') / 'strava.sqlite',
     show_default=True,
     help="Location of the strava-offline database")
 @click.option(
@@ -47,12 +49,21 @@ from .report import reports
 @click.option(
     '--show-first-last/--hide-first-last', default=True, show_default=True,
     help="Show first/last usage of components")
-def main(rules, csv, strava_database, output, report, tablefmt, show_name, show_first_last):
+def main(
+    rules_input: TextIO,
+    csv: Optional[TextIO],
+    strava_database: Path,
+    output: TextIO,
+    report: str,
+    tablefmt: str,
+    show_name: bool,
+    show_first_last: bool,
+):
     if csv:
-        aliases, activities = {}, read_input_csv(csv)
+        aliases, activities = read_input_csv(csv)
     else:
         aliases, activities = read_strava_offline(strava_database)
-    rules = read_rules(rules, aliases=aliases)
+    rules = read_rules(rules_input, aliases=aliases)
     res = apply_rules(rules, activities)
     reports[report](res, output=output, tablefmt=tablefmt, show_name=show_name, show_first_last=show_first_last)
     warn_unknown_bikes(rules, activities)
