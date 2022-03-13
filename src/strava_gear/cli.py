@@ -34,7 +34,7 @@ from .report import reports
     '-o', '--output', type=click.File('w'), default='-', show_default=True,
     help="Output file")
 @click.option(
-    '-r', '--report', type=click.Choice(reports.keys()),
+    '-r', '--report', type=click.Choice(list(reports.keys())),
     default='bikes', show_default=True,
     help="Type of report")
 @click.option(
