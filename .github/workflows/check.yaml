@@ -100,7 +100,10 @@ jobs:
           apt-cache --generate pkgnames \
             | grep --line-regexp --fixed-strings \
               -e git \
+              -e python3-bottle \
+              -e python3-build \
               -e python3-click \
+              -e python3-configobj \
               -e python3-cram \
               -e python3-dateutil \
               -e python3-flake8 \
@@ -112,6 +115,7 @@ jobs:
               -e python3-pip-whl \
               -e python3-platformdirs \
               -e python3-pytest \
+              -e python3-requests-oauthlib \
               -e python3-tabulate \
               -e python3-typeshed \
               -e python3-typing-extensions \
