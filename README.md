@@ -212,6 +212,7 @@ rules:
     "#cx-tyres":
       tyre-front: schwalbe-x-one-3
       tyre-rear: schwalbe-x-one-4
+
   # These temporarily change component assignments whenever the given hashtag
   # appears in the name (not description!) of an activity.
   #
@@ -219,6 +220,12 @@ rules:
   # longer assigns that component, it doesn't result in temporary unassignment
   # whenever that hashtag is used in an activity name. If you need that, use a
   # dummy component id.
+
+  # A special virtual hashtag `#VirtualRide` can be used to define component
+  # assignements for indoor trainer rides from Zwift, Rouvy, etc.
+  - "#VirtualRide":
+      tyre-front: wahoo-kickr-climb
+      tyre-rear: wahoo-kickr
 
   # Dates are interpreted as midnight in your current time zone.
   # Time can be specified too, if you swapped components in between rides in

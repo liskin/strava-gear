@@ -5,6 +5,7 @@ from typing import Iterable
 from typing import List
 from warnings import warn
 
+from .data import HashTag
 from .data import Result
 from .data import Rule
 from .data import Rules
@@ -38,7 +39,11 @@ def apply_rules(rules: Rules, activities: List[Dict]) -> Result:
 def usage_for_activity(activity: Dict, rule: Rule) -> Usage:
     component_map = rule.bikes.get(activity['gear_id'], {})
 
-    for hashtag in (s for s in activity['name'].split() if s.startswith('#')):
+    hashtags = [s for s in activity['name'].split() if s.startswith('#')]
+    if activity['type'] == 'VirtualRide':
+        hashtags.append(HashTag('#VirtualRide'))
+
+    for hashtag in hashtags:
         component_map_ht = rule.hashtags.get(hashtag)
         if component_map_ht:
             component_map = {**component_map, **component_map_ht}
