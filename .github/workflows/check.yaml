@@ -74,6 +74,8 @@ jobs:
           run: make test
       - name: readme
         run: make readme
+      - name: check-wheel
+        run: make check-wheel
 
   check-distro:
     runs-on: ubuntu-latest
@@ -152,6 +154,8 @@ jobs:
           run: make test
       - name: readme
         run: make readme
+      - name: check-wheel
+        run: make check-wheel
 
   workflow-keepalive:
     if: github.event_name == 'schedule'
