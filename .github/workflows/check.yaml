@@ -111,6 +111,7 @@ jobs:
               -e python3-cram \
               -e python3-dateutil \
               -e python3-flake8 \
+              -e python3-importlib-metadata \
               -e python3-isort \
               -e python3-jsonschema \
               -e python3-mypy \
