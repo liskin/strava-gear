@@ -1,12 +1,76 @@
 [build-system]
 requires = [
-    "setuptools >= 42",
-    "setuptools_scm[toml] >= 3.4",
-    "wheel",
+    "setuptools >= 64.0",
+    "setuptools_scm[toml] >= 6.2",
 ]
 build-backend = "setuptools.build_meta"
 
+[project]
+name = "strava-gear"
+dynamic = ["version"]
+authors = [{name = "Tomáš Janoušek", email = "tomi@nomi.cz"}]
+license = {text = "MIT"}
+description = "Rule based tracker of gear and component wear primarily for Strava"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Utilities",
+]
+urls = {Homepage = "https://github.com/liskin/strava-gear"}
+requires-python = "~= 3.7"
+dependencies = [
+    "PyYAML",
+    "click ~= 8.0",
+    "importlib-metadata; python_version<'3.10'",
+    "jsonschema",
+    "platformdirs >= 2.1",
+    "python-dateutil >= 2.7",
+    "tabulate",
+]
+
+[project.readme]
+file = "README.md"
+content-type = "text/markdown"
+
+[project.optional-dependencies]
+dev = [
+    "build >= 0.7",
+    "cram",
+    "flake8 >= 3.7",
+    "isort >= 5.0",
+    "mypy >= 0.900",
+    "twine",
+    "types-PyYAML",
+    "types-python-dateutil",
+    "types-tabulate",
+]
+test = [
+    "pytest",
+]
+strava = [
+    "strava-offline ~= 1.0",
+]
+
+[project.scripts]
+strava-gear = "strava_gear.cli:main"
+strava-gear-sync = "strava_gear.cli_strava_offline:cli_sqlite [strava]"
+
 [tool.setuptools_scm]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = false
+
+[tool.mypy]
+python_executable = ".venv/bin/python3"
+show_error_codes = true
 
 [tool.isort]
 profile = "open_stack"
