@@ -94,8 +94,8 @@ class Component:
     def add_usage(self, usage: Usage) -> Component:
         return replace(
             self,
-            distance=self.distance + usage.distances.get(self.ident, 0),
-            time=self.time + usage.times.get(self.ident, 0),
+            distance=Meters(self.distance + usage.distances.get(self.ident, 0)),
+            time=Seconds(self.time + usage.times.get(self.ident, 0)),
             firstlast=self.firstlast + usage.firstlasts.get(self.ident, FirstLast()))
 
     def assign(self, assignment: Optional[ComponentAssignment]) -> Component:
