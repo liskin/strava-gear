@@ -53,6 +53,7 @@ def usage_for_activity(activity: Dict, rule: Rule) -> Usage:
     return Usage.from_activity(
         components=component_map.values(),
         distance=activity['distance'],
+        elevation_gain=activity['total_elevation_gain'],
         time=activity['moving_time'],
         ts=activity['start_date'])
 

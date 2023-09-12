@@ -87,6 +87,7 @@ class Component:
     ident: ComponentId
     name: ComponentName
     distance: Meters = Meters(0.0)
+    elevation_gain: Meters = Meters(0.0)
     time: Seconds = Seconds(0.0)
     firstlast: FirstLast = FirstLast()
     assignment: Optional[ComponentAssignment] = None
@@ -95,6 +96,7 @@ class Component:
         return replace(
             self,
             distance=Meters(self.distance + usage.distances.get(self.ident, 0)),
+            elevation_gain=Meters(self.elevation_gain + usage.elevation_gains.get(self.ident, 0)),
             time=Seconds(self.time + usage.times.get(self.ident, 0)),
             firstlast=self.firstlast + usage.firstlasts.get(self.ident, FirstLast()))
 
@@ -164,14 +166,22 @@ class Rules:
 @dataclass
 class Usage:
     distances: Dict[ComponentId, float] = field(default_factory=lambda: defaultdict(float))
+    elevation_gains: Dict[ComponentId, float] = field(default_factory=lambda: defaultdict(float))
     times: Dict[ComponentId, float] = field(default_factory=lambda: defaultdict(float))
     firstlasts: Dict[ComponentId, FirstLast] = field(default_factory=lambda: defaultdict(FirstLast))
 
     @staticmethod
-    def from_activity(components: Iterable[ComponentId], distance: float, time: float, ts: datetime):
+    def from_activity(
+        components: Iterable[ComponentId],
+        distance: float,
+        elevation_gain: float,
+        time: float,
+        ts: datetime,
+    ):
         fl = FirstLast.from_ts(ts)
         return Usage(
             distances={c: distance for c in components},
+            elevation_gains={c: elevation_gain for c in components},
             times={c: time for c in components},
             firstlasts={c: fl for c in components})
 
@@ -180,6 +190,8 @@ class Usage:
             return NotImplemented
         for k, d in other.distances.items():
             self.distances[k] += d
+        for k, d in other.elevation_gains.items():
+            self.elevation_gains[k] += d
         for k, t in other.times.items():
             self.times[k] += t
         for k, fl in other.firstlasts.items():

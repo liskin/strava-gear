@@ -25,10 +25,10 @@ Rules:
 Bikes report:
 
     $ strava-gear <<END
-    > name,gear_id,start_date,moving_time,distance
-    > Ride 1,road,2022-01-01,3600,1000
-    > Ride 2,road,2023-01-01,3600,1000
-    > Ride 3,road,2023-02-01,3600,1000
+    > name,gear_id,start_date,moving_time,distance,total_elevation_gain
+    > Ride 1,road,2022-01-01,3600,1000,10
+    > Ride 2,road,2023-01-01,3600,1000,10
+    > Ride 3,road,2023-02-01,3600,1000,10
     > END
     bike,role,id,name,km,hour,first … last
     road,chain,c3,c3,0.0,0.0,never
@@ -36,10 +36,10 @@ Bikes report:
 Components report:
 
     $ strava-gear --report components <<END
-    > name,gear_id,start_date,moving_time,distance
-    > Ride 1,road,2022-01-01,3600,1000
-    > Ride 2,road,2023-01-01,3600,1000
-    > Ride 3,road,2023-02-01,3600,1000
+    > name,gear_id,start_date,moving_time,distance,total_elevation_gain
+    > Ride 1,road,2022-01-01,3600,1000,10
+    > Ride 2,road,2023-01-01,3600,1000,10
+    > Ride 3,road,2023-02-01,3600,1000,10
     > END
     id,name,km,hour,first … last
     c3,c3,0.0,0.0,never
@@ -51,10 +51,10 @@ Components report:
 VirtualRide virtual hashtag:
 
     $ strava-gear --report components <<END
-    > name,gear_id,start_date,moving_time,distance,type
-    > Ride 1,road,2022-01-01,3600,1000,Ride
-    > Ride 2,road,2023-01-01,3600,1000,Ride
-    > Ride 4,road,2023-02-01,3600,1000,VirtualRide
+    > name,gear_id,start_date,moving_time,distance,total_elevation_gain,type
+    > Ride 1,road,2022-01-01,3600,1000,10,Ride
+    > Ride 2,road,2023-01-01,3600,1000,10,Ride
+    > Ride 4,road,2023-02-01,3600,1000,10,VirtualRide
     > END
     id,name,km,hour,first … last
     c3,c3,0.0,0.0,never

@@ -281,7 +281,7 @@ For a real life example, take a look at [my own rules.yaml](https://github.com/l
       --rules FILENAME                Rules configuration (bikes, components, ...)  [default:
                                       /home/user/.config/strava_gear/rules.yaml]
       --csv FILENAME                  Load activities from CSV instead of the strava-offline database (columns: name,
-                                      gear_id, start_date, moving_time, distance)
+                                      gear_id, start_date, moving_time, distance, total_elevation_gain)
       --strava-database PATH          Location of the strava-offline database  [default:
                                       /home/user/.local/share/strava_offline/strava.sqlite]
       -o, --output FILENAME           Output file  [default: -]
@@ -292,6 +292,7 @@ For a real life example, take a look at [my own rules.yaml](https://github.com/l
       --show-name / --hide-name       Show long component names  [default: show-name]
       --show-first-last / --hide-first-last
                                       Show first/last usage of components  [default: show-first-last]
+      --show-vert-m / --hide-vert-m   Show vertical meters (elevation gain)  [default: hide-vert-m]
       --help                          Show this message and exit.
 <!-- end include -->
 

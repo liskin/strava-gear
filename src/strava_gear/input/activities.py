@@ -16,6 +16,7 @@ essential_columns = {
     'start_date',
     'moving_time',
     'distance',
+    'total_elevation_gain',
 }
 
 
@@ -26,7 +27,7 @@ def read_input_csv(inp) -> Tuple[Dict[BikeName, BikeId], List[Dict]]:
         sqlite3 ~/.local/share/strava_offline/strava.sqlite \
             ".mode csv" \
             ".headers on" \
-            "SELECT name, gear_id, start_date, moving_time, distance FROM activity" \
+            "SELECT name, gear_id, start_date, moving_time, distance, total_elevation_gain FROM activity" \
             >activities.csv
     """
     activities: List[Dict] = []
@@ -36,6 +37,7 @@ def read_input_csv(inp) -> Tuple[Dict[BikeName, BikeId], List[Dict]]:
             **r,
             'moving_time': int(r['moving_time']),
             'distance': float(r['distance']),
+            'total_elevation_gain': float(r['total_elevation_gain']),
             'start_date': parse_datetime(r['start_date']),
         })
 
