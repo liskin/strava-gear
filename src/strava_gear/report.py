@@ -25,7 +25,7 @@ def report(f, res: Result, output, tablefmt: str, show_name: bool, show_first_la
         return
 
     if tablefmt == 'csv':
-        writer = csv.DictWriter(output, fieldnames=list(table[0].keys()))
+        writer = csv.DictWriter(output, fieldnames=list(table[0].keys()), lineterminator='\n')
         writer.writeheader()
         writer.writerows(table)
     else:

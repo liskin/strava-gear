@@ -64,7 +64,8 @@ test-cram: $(VENV_DONE)
 	PATH="$(CURDIR)/$(VENV)/bin:$$PATH" \
 	XDG_DATA_HOME=/home/user/.local/share \
 	XDG_CONFIG_HOME=/home/user/.config \
-	$(VENV_PYTHON) -m cram --indent=4 $(INTERACTIVE) $(wildcard tests/*.md tests/*/*.md tests/*/*/*.md)
+	$(VENV_PYTHON) tests/cram-noescape.py --indent=4 --shell=/bin/bash $(INTERACTIVE) \
+		$(wildcard tests/*.md tests/*/*.md tests/*/*/*.md)
 
 .PHONY: README.md
 README.md: test-cram
