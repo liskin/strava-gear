@@ -7,6 +7,7 @@ import platformdirs
 
 from .core import apply_rules
 from .core import warn_unknown_bikes
+from .input.activities import essential_columns
 from .input.activities import read_input_csv
 from .input.activities import read_strava_offline
 from .input.rules import read_rules
@@ -21,9 +22,9 @@ from .report import reports
     help="Rules configuration (bikes, components, ...)")
 @click.option(
     '--csv', type=click.File('r'),
-    help="""
+    help=f"""
     Load activities from CSV instead of the strava-offline database
-    (columns: name, gear_id, start_date, moving_time, distance, total_elevation_gain)
+    (columns: {", ".join(sorted(essential_columns))})
     """)
 @click.option(
     '--strava-database', type=click.Path(path_type=Path),  # type: ignore [type-var] # debian typeshed compat

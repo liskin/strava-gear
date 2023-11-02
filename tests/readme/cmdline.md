@@ -8,8 +8,8 @@
     Options:
       --rules FILENAME                Rules configuration (bikes, components, ...)  [default:
                                       /home/user/.config/strava_gear/rules.yaml]
-      --csv FILENAME                  Load activities from CSV instead of the strava-offline database (columns: name,
-                                      gear_id, start_date, moving_time, distance, total_elevation_gain)
+      --csv FILENAME                  Load activities from CSV instead of the strava-offline database (columns: distance,
+                                      gear_id, moving_time, name, start_date, total_elevation_gain)
       --strava-database PATH          Location of the strava-offline database  [default:
                                       /home/user/.local/share/strava_offline/strava.sqlite]
       -o, --output FILENAME           Output file  [default: -]
