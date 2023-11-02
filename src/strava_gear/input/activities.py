@@ -23,12 +23,13 @@ def read_input_csv(inp) -> Tuple[Dict[BikeName, BikeId], List[Dict]]:
     """
     activities: List[Dict] = []
     for r in csv.DictReader(inp):
-        assert r.keys() <= {'name', 'gear_id', 'type', 'start_date', 'moving_time', 'distance'}
+        assert r.keys() <= {'name', 'gear_id', 'start_date', 'moving_time', 'distance'}
         activities.append({
             **r,
             'moving_time': int(r['moving_time']),
             'distance': float(r['distance']),
             'start_date': parse_datetime(r['start_date']),
+            'type': None,
         })
 
     return {}, activities
