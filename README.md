@@ -259,7 +259,7 @@ For a real life example, take a look at [my own rules.yaml](https://github.com/l
 
 ## Command line options
 
-<!-- include .readme.md/cmdline.md -->
+<!-- include tests/readme/cmdline.md -->
 <!--
     $ export COLUMNS=120
 -->
