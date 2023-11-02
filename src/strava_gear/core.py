@@ -36,14 +36,16 @@ def apply_rules(rules: Rules, activities: List[Dict]) -> Result:
     return Result(bike_names=rules.bike_names, components=components)
 
 
+def hashtags_for_activity(activity: Dict) -> List[HashTag]:
+    implicit_hashtags = [HashTag(f"#{k}={v}") for k, v in activity.items()]
+    explicit_hashtags = [HashTag(s) for s in activity['name'].split() if s.startswith('#')]
+    return implicit_hashtags + explicit_hashtags
+
+
 def usage_for_activity(activity: Dict, rule: Rule) -> Usage:
     component_map = rule.bikes.get(activity['gear_id'], {})
 
-    hashtags = [s for s in activity['name'].split() if s.startswith('#')]
-    if activity['type'] == 'VirtualRide':
-        hashtags.append(HashTag('#VirtualRide'))
-
-    for hashtag in hashtags:
+    for hashtag in hashtags_for_activity(activity):
         component_map_ht = rule.hashtags.get(hashtag)
         if component_map_ht:
             component_map = {**component_map, **component_map_ht}

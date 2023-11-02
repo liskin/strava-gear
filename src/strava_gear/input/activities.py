@@ -10,6 +10,14 @@ from ..data import BikeId
 from ..data import BikeName
 from .date import parse_datetime
 
+essential_columns = {
+    'name',
+    'gear_id',
+    'start_date',
+    'moving_time',
+    'distance',
+}
+
 
 def read_input_csv(inp) -> Tuple[Dict[BikeName, BikeId], List[Dict]]:
     """
@@ -23,13 +31,12 @@ def read_input_csv(inp) -> Tuple[Dict[BikeName, BikeId], List[Dict]]:
     """
     activities: List[Dict] = []
     for r in csv.DictReader(inp):
-        assert r.keys() <= {'name', 'gear_id', 'start_date', 'moving_time', 'distance'}
+        assert essential_columns <= r.keys()
         activities.append({
             **r,
             'moving_time': int(r['moving_time']),
             'distance': float(r['distance']),
             'start_date': parse_datetime(r['start_date']),
-            'type': None,
         })
 
     return {}, activities
@@ -48,8 +55,8 @@ def read_strava_offline(db_filename: Union[str, PathLike]) -> Tuple[Dict[BikeNam
         }
 
         activities: List[Dict] = []
-        for r in db.execute('SELECT name, gear_id, type, start_date, moving_time, distance FROM activity'):
-            assert set(r.keys()) <= {'name', 'gear_id', 'type', 'start_date', 'moving_time', 'distance'}
+        for r in db.execute('SELECT * FROM activity'):
+            assert essential_columns <= set(r.keys())
             activities.append({**r, 'start_date': parse_datetime(r['start_date'])})
 
         return aliases, activities

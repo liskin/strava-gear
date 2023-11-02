@@ -221,11 +221,14 @@ rules:
   # whenever that hashtag is used in an activity name. If you need that, use a
   # dummy component id.
 
-  # A special virtual hashtag `#VirtualRide` can be used to define component
-  # assignements for indoor trainer rides from Zwift, Rouvy, etc.
-  - "#VirtualRide":
+  # Special virtual hashtags `#column=value` are available for all columns in
+  # the input database/csv. These can for example be used to define component
+  # assignments for indoor trainer rides from Zwift, Rouvy, etc.:
+  - "#type=VirtualRide":
       tyre-front: wahoo-kickr-climb
       tyre-rear: wahoo-kickr
+  - "#commute=1":
+      shoes: chrome-industries-kursk
 
   # Dates are interpreted as midnight in your current time zone.
   # Time can be specified too, if you swapped components in between rides in
