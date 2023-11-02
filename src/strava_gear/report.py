@@ -33,7 +33,7 @@ def report(f, res: Result, output, tablefmt: str, show_name: bool, show_first_la
 
 
 def report_components(res: Result) -> Iterator[Dict]:
-    for c in sorted(res.components, key=lambda c: c.firstlast):
+    for c in sorted(res.components, key=lambda c: (c.firstlast, c.ident,)):
         yield {
             "id": c.ident,
             "name": c.name,
