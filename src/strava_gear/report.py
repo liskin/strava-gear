@@ -46,7 +46,7 @@ def report_components(res: Result) -> Iterator[Dict]:
         }
 
 
-def report_bikes(res: Result, show_names: bool = True, show_firstlasts: bool = True) -> Iterator[Dict]:
+def report_bikes(res: Result) -> Iterator[Dict]:
     bikes_firstlasts = bikes_firstlast(res)
 
     def sort_key(c: Component):
