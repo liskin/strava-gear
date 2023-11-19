@@ -20,5 +20,6 @@
       --show-name / --hide-name       Show long component names  [default: show-name]
       --show-first-last / --hide-first-last
                                       Show first/last usage of components  [default: show-first-last]
-      --show-vert-m / --hide-vert-m   Show vertical meters (elevation gain)  [default: hide-vert-m]
+      --show-vert / --hide-vert       Show vertical (elevation gain)  [default: hide-vert]
+      --units [metric|imperial]       Show data in metric or imperial  [default: metric]
       --help                          Show this message and exit.

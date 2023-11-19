@@ -51,8 +51,11 @@ from .report import reports
     '--show-first-last/--hide-first-last', default=True, show_default=True,
     help="Show first/last usage of components")
 @click.option(
-    '--show-vert-m/--hide-vert-m', default=False, show_default=True,
-    help="Show vertical meters (elevation gain)")
+    '--show-vert/--hide-vert', default=False, show_default=True,
+    help="Show vertical (elevation gain)")
+@click.option(
+    '--units', type=click.Choice(["metric", "imperial"]), default="metric", show_default=True,
+    help="Show data in metric or imperial")
 def main(
     rules_input: TextIO,
     csv: Optional[TextIO],
@@ -62,7 +65,8 @@ def main(
     tablefmt: str,
     show_name: bool,
     show_first_last: bool,
-    show_vert_m: bool,
+    show_vert: bool,
+    units: str,
 ):
     if csv:
         aliases, activities = read_input_csv(csv)
@@ -75,7 +79,8 @@ def main(
         output=output, tablefmt=tablefmt,
         show_name=show_name,
         show_first_last=show_first_last,
-        show_vert_m=show_vert_m,
+        show_vert=show_vert,
+        units=units,
     )
     warn_unknown_bikes(rules, activities)
 

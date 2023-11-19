@@ -12,14 +12,22 @@ from .data import FirstLast
 from .data import Result
 
 
-def report(f, res: Result, output, tablefmt: str, show_name: bool, show_first_last: bool, show_vert_m: bool):
+def report(f, res: Result, output, tablefmt: str, show_name: bool, show_first_last: bool, show_vert: bool, units: str):
     def cols(d: Dict) -> Dict:
         if not show_name:
             del d["name"]
         if not show_first_last:
             del d["first … last"]
-        if not show_vert_m:
+        if units == "imperial":
+            del d["km"]
             del d["vert m"]
+            if not show_vert:
+                del d["vert ft"]
+        else:
+            del d["mi"]
+            del d["vert ft"]
+            if not show_vert:
+                del d["vert m"]
         return d
 
     table = [cols(d) for d in f(res)]
@@ -40,7 +48,9 @@ def report_components(res: Result) -> Iterator[Dict]:
             "id": c.ident,
             "name": c.name,
             "km": c.distance / 1000,
+            "mi": c.distance / 1000*0.62,
             "vert m": c.elevation_gain,
+            "vert ft": c.elevation_gain*3.3,
             "hour": c.time / 3600,
             "first … last": c.firstlast,
         }
@@ -64,7 +74,9 @@ def report_bikes(res: Result) -> Iterator[Dict]:
             "id": c.ident,
             "name": c.name,
             "km": c.distance / 1000,
+            "mi": c.distance / 1000*0.62,
             "vert m": c.elevation_gain,
+            "vert ft": c.elevation_gain*3.3,
             "hour": c.time / 3600,
             "first … last": c.firstlast,
         }
