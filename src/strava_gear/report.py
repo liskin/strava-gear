@@ -1,5 +1,7 @@
 from collections import defaultdict
 import csv
+from enum import StrEnum
+from enum import auto
 from functools import partial
 from typing import Dict
 from typing import Final
@@ -16,13 +18,27 @@ MILE_IN_METERS: Final[float] = 1_609.344
 FOOT_IN_METERS: Final[float] = 0.3048
 
 
-def report(f, res: Result, output, tablefmt: str, show_name: bool, show_first_last: bool, show_vert: bool, units: str):
+class Units(StrEnum):
+    METRIC = auto()
+    IMPERIAL = auto()
+
+
+def report(
+    f,
+    res: Result,
+    output,
+    tablefmt: str,
+    show_name: bool,
+    show_first_last: bool,
+    show_vert: bool,
+    units: Units,
+):
     def cols(d: Dict) -> Dict:
         if not show_name:
             del d["name"]
         if not show_first_last:
             del d["first … last"]
-        if units == "imperial":
+        if units == Units.IMPERIAL:
             del d["km"]
             del d["vert m"]
             if not show_vert:

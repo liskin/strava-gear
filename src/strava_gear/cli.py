@@ -11,6 +11,7 @@ from .input.activities import essential_columns
 from .input.activities import read_input_csv
 from .input.activities import read_strava_offline
 from .input.rules import read_rules
+from .report import Units
 from .report import reports
 
 
@@ -54,7 +55,7 @@ from .report import reports
     '--show-vert/--hide-vert', default=False, show_default=True,
     help="Show vertical (elevation gain)")
 @click.option(
-    '--units', type=click.Choice(["metric", "imperial"]), default="metric", show_default=True,
+    '--units', type=click.Choice(list(Units)), default=Units.METRIC, show_default=True,
     help="Show data in metric or imperial")
 def main(
     rules_input: TextIO,
@@ -66,7 +67,7 @@ def main(
     show_name: bool,
     show_first_last: bool,
     show_vert: bool,
-    units: str,
+    units: Units,
 ):
     if csv:
         aliases, activities = read_input_csv(csv)
