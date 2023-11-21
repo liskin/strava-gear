@@ -1,6 +1,6 @@
 from collections import defaultdict
 import csv
-from enum import StrEnum
+from enum import Enum
 from enum import auto
 from functools import partial
 from typing import Dict
@@ -18,7 +18,7 @@ MILE_IN_METERS: Final[float] = 1_609.344
 FOOT_IN_METERS: Final[float] = 0.3048
 
 
-class Units(StrEnum):
+class Units(Enum):
     METRIC = auto()
     IMPERIAL = auto()
 

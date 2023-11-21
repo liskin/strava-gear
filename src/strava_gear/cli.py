@@ -55,7 +55,8 @@ from .report import reports
     '--show-vert/--hide-vert', default=False, show_default=True,
     help="Show vertical (elevation gain)")
 @click.option(
-    '--units', type=click.Choice(list(Units)), default=Units.METRIC, show_default=True,
+    '--units', type=click.Choice([u.name.lower() for u in Units]), default=Units.METRIC.name.lower(), show_default=True,
+    callback=lambda _ctx, _param, v: Units[v.upper()],  # TODO: drop when Python 3.11 is the oldest supported
     help="Show data in metric or imperial")
 def main(
     rules_input: TextIO,
