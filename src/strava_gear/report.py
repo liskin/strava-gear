@@ -2,6 +2,7 @@ from collections import defaultdict
 import csv
 from functools import partial
 from typing import Dict
+from typing import Final
 from typing import Iterator
 
 from tabulate import tabulate
@@ -10,6 +11,9 @@ from .data import BikeId
 from .data import Component
 from .data import FirstLast
 from .data import Result
+
+MILE_IN_METERS: Final[float] = 1_609.344
+FOOT_IN_METERS: Final[float] = 0.3048
 
 
 def report(f, res: Result, output, tablefmt: str, show_name: bool, show_first_last: bool, show_vert: bool, units: str):
@@ -48,9 +52,9 @@ def report_components(res: Result) -> Iterator[Dict]:
             "id": c.ident,
             "name": c.name,
             "km": c.distance / 1000,
-            "mi": c.distance / 1000*0.62,
+            "mi": c.distance / MILE_IN_METERS,
             "vert m": c.elevation_gain,
-            "vert ft": c.elevation_gain*3.3,
+            "vert ft": c.elevation_gain / FOOT_IN_METERS,
             "hour": c.time / 3600,
             "first … last": c.firstlast,
         }
@@ -74,9 +78,9 @@ def report_bikes(res: Result) -> Iterator[Dict]:
             "id": c.ident,
             "name": c.name,
             "km": c.distance / 1000,
-            "mi": c.distance / 1000*0.62,
+            "mi": c.distance / MILE_IN_METERS,
             "vert m": c.elevation_gain,
-            "vert ft": c.elevation_gain*3.3,
+            "vert ft": c.elevation_gain / FOOT_IN_METERS,
             "hour": c.time / 3600,
             "first … last": c.firstlast,
         }
