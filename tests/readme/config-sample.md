@@ -1,0 +1,1 @@
+    $ strava-gear --config-sample

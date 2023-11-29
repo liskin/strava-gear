@@ -1,0 +1,7 @@
+*.egg-info/
+*.md.err
+/.*_cache/
+/.venv/
+/build/
+/dist/
+__pycache__/
