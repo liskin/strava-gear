@@ -58,7 +58,7 @@ from .report import reports
     '--units', type=click.Choice([u.name.lower() for u in Units]), default=Units.METRIC.name.lower(), show_default=True,
     callback=lambda _ctx, _param, v: Units[v.upper()],  # TODO: drop when Python 3.11 is the oldest supported
     help="Show data in metric or imperial")
-def main(
+def cli(
     rules_input: TextIO,
     csv: Optional[TextIO],
     strava_database: Path,
@@ -85,7 +85,3 @@ def main(
         units=units,
     )
     warn_unknown_bikes(rules, activities)
-
-
-if __name__ == "__main__":
-    main()

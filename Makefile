@@ -59,12 +59,12 @@ readme: README.md
 	git diff --exit-code $^
 
 .PHONY: test-cram
-test-cram: INTERACTIVE=$(shell [ -t 0 ] && echo --interactive)
+test-cram: CRAM_INTERACTIVE=$(shell [ -t 0 ] && echo --interactive)
 test-cram: $(VENV_DONE)
 	PATH="$(CURDIR)/$(VENV)/bin:$$PATH" \
 	XDG_DATA_HOME=/home/user/.local/share \
 	XDG_CONFIG_HOME=/home/user/.config \
-	$(VENV_PYTHON) tests/cram-noescape.py --indent=4 --shell=/bin/bash $(INTERACTIVE) \
+	$(VENV_PYTHON) tests/cram-noescape.py --indent=4 --shell=/bin/bash $(CRAM_INTERACTIVE) \
 		$(wildcard tests/*.md tests/*/*.md tests/*/*/*.md)
 
 .PHONY: README.md
