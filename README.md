@@ -26,7 +26,7 @@ Planned, not yet implemented features:
 
 * [configurable alerts that a component might be worn out and needs servicing
   or replacing](https://github.com/liskin/strava-gear/issues/3)
-  
+
 ![Example screenshot](https://user-images.githubusercontent.com/300342/133298545-0573cef3-593d-427a-89b1-5c049374d394.png)
 
 [strava-offline]: https://github.com/liskin/strava-offline#readme
