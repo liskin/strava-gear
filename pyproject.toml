@@ -24,7 +24,6 @@ classifiers = [ # https://pypi.org/classifiers/
     "Programming Language :: Python :: 3.12",
     "Topic :: Utilities",
 ]
-urls = {Homepage = "https://github.com/liskin/strava-gear"}
 requires-python = "~= 3.8"
 dependencies = [
     "PyYAML",
@@ -54,6 +53,14 @@ test = [
 strava = [
     "strava-offline ~= 1.0",
 ]
+
+[project.urls]
+"Homepage" = "https://github.com/liskin/strava-gear"
+"Release Notes" = "https://github.com/liskin/strava-gear/releases"
+"Issues" = "https://github.com/liskin/strava-gear/issues"
+"CI" = "https://github.com/liskin/strava-gear/actions"
+"Donations (GitHub)" = "https://github.com/sponsors/liskin"
+"Donations (PayPal)" = "https://www.paypal.me/lisknisi/10EUR"
 
 [project.scripts]
 strava-gear = "strava_gear.cli:cli"
