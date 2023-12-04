@@ -13,7 +13,7 @@ license = {text = "MIT"}
 readme = {file="README.md", content-type="text/markdown"}
 dynamic = ["version"]
 classifiers = [ # https://pypi.org/classifiers/
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Environment :: Console",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
