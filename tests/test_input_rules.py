@@ -97,7 +97,7 @@ def test_validation_ok():
 def test_validation_fails():
     with pytest.raises(ValidationError) as e:
         rd("rules: []")
-    assert "[] is too short" in str(e.value)
+    assert "[] is too short" in str(e.value) or "[] should be non-empty" in str(e.value)
     assert list(e.value.absolute_path) == ['rules']
 
     with pytest.raises(ValidationError) as e:
