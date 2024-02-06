@@ -3,6 +3,7 @@ from os import PathLike
 import sqlite3
 from typing import Dict
 from typing import List
+from typing import TextIO
 from typing import Tuple
 from typing import Union
 
@@ -20,7 +21,7 @@ essential_columns = {
 }
 
 
-def read_input_csv(inp) -> Tuple[Dict[BikeName, BikeId], List[Dict]]:
+def read_input_csv(inp: TextIO) -> Tuple[Dict[BikeName, BikeId], List[Dict]]:
     """
     Load activities from CSV generated from this command:
 
