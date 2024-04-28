@@ -9,6 +9,7 @@ Rules:
     $ cat >rules.yaml <<END
     > rules:
     >   - road:
+    >       frame: fr
     >       chain: c1
     >   - since: 2023-01-01
     >     road:
@@ -32,10 +33,11 @@ Bikes report:
     > END
     bike,role,id,name,km,hour,first … last
     road,chain,c3,c3,0.0,0.0,never
+    road,frame,fr,fr,3.0,3.0,2022-01-01 … 2023-02-01
 
 Components report:
 
-    $ strava-gear --report components <<END
+    $ strava-gear --report components <<END | grep -v ^fr,
     > name,gear_id,start_date,moving_time,distance,total_elevation_gain
     > Ride 1,road,2022-01-01,3600,1000,10
     > Ride 2,road,2023-01-01,3600,1000,10
@@ -50,7 +52,7 @@ Components report:
 
 VirtualRide virtual hashtag:
 
-    $ strava-gear --report components <<END
+    $ strava-gear --report components <<END | grep -v ^fr,
     > name,gear_id,start_date,moving_time,distance,total_elevation_gain,type
     > Ride 1,road,2022-01-01,3600,1000,10,Ride
     > Ride 2,road,2023-01-01,3600,1000,10,Ride
@@ -65,7 +67,7 @@ VirtualRide virtual hashtag:
 
 Components report imperial:
 
-    $ strava-gear --report components --units imperial <<END
+    $ strava-gear --report components --units imperial <<END | grep -v ^fr,
     > name,gear_id,start_date,moving_time,distance,total_elevation_gain
     > Ride 1,road,2022-01-01,3600,1000,10
     > Ride 2,road,2023-01-01,3600,1000,10
@@ -77,3 +79,22 @@ Components report imperial:
     c1,c1,0.621371192237334,1.0,2022-01-01 … 2022-01-01
     c2,c2,0.621371192237334,1.0,2023-01-01 … 2023-01-01
     c4,c4,0.621371192237334,1.0,2023-02-01 … 2023-02-01
+
+Date range:
+
+    $ strava-gear --date-start 2023-01-01 <<END | grep frame
+    > name,gear_id,start_date,moving_time,distance,total_elevation_gain
+    > Ride 1,road,2022-01-01,3600,1000,10
+    > Ride 2,road,2023-01-01,3600,1000,10
+    > Ride 3,road,2023-02-01,3600,1000,10
+    > END
+    road,frame,fr,fr,2.0,2.0,2023-01-01 … 2023-02-01
+
+    $ strava-gear --date-end 2023-02-01 <<END | grep frame
+    > name,gear_id,start_date,moving_time,distance,total_elevation_gain
+    > Ride 1,road,2022-01-01,3600,1000,10
+    > Ride 2,road,2023-01-01,3600,1000,10
+    > Ride 3,road,2023-02-01,3600,1000,10
+    > END
+    road,frame,fr,fr,2.0,2.0,2022-01-01 … 2023-01-01
+

@@ -1,4 +1,7 @@
+from datetime import datetime
 from pathlib import Path
+from typing import Dict
+from typing import List
 from typing import Optional
 from typing import TextIO
 
@@ -10,9 +13,23 @@ from .core import warn_unknown_bikes
 from .input.activities import essential_columns
 from .input.activities import read_input_csv
 from .input.activities import read_strava_offline
+from .input.date import parse_datetime
 from .input.rules import read_rules
 from .report import Units
 from .report import reports
+
+
+class DateTimeParam(click.ParamType):
+    name = "datetime"
+
+    def convert(self, value, _param, _ctx):
+        try:
+            return parse_datetime(value)
+        except ValueError as e:
+            self.fail(str(e) or "Could not parse datetime")
+
+    def get_metavar(self, _param):
+        return "ISO8601"
 
 
 @click.command(context_settings={'max_content_width': 120})
@@ -58,6 +75,12 @@ from .report import reports
     '--units', type=click.Choice([u.name.lower() for u in Units]), default=Units.METRIC.name.lower(), show_default=True,
     callback=lambda _ctx, _param, v: Units[v.upper()],  # TODO: drop when Python 3.11 is the oldest supported
     help="Show data in metric or imperial")
+@click.option(
+    '--date-start', type=DateTimeParam(),
+    help="Filter activities: start at or after the specified date(time)")
+@click.option(
+    '--date-end', type=DateTimeParam(),
+    help="Filter activities: start before the specified date(time)")
 def cli(
     rules_input: TextIO,
     csv: Optional[TextIO],
@@ -69,11 +92,14 @@ def cli(
     show_first_last: bool,
     show_vert: bool,
     units: Units,
+    date_start: Optional[datetime],
+    date_end: Optional[datetime]
 ):
     if csv:
         aliases, activities = read_input_csv(csv)
     else:
         aliases, activities = read_strava_offline(strava_database)
+    activities = activities_in_range(activities, date_start=date_start, date_end=date_end)
     rules = read_rules(rules_input, aliases=aliases)
     res = apply_rules(rules, activities)
     reports[report](
@@ -85,3 +111,16 @@ def cli(
         units=units,
     )
     warn_unknown_bikes(rules, activities)
+
+
+def activities_in_range(
+    activities: List[Dict],
+    date_start: Optional[datetime],
+    date_end: Optional[datetime]
+) -> List[Dict]:
+    return [
+        a
+        for a in activities
+        if not date_start or a['start_date'] >= date_start
+        if not date_end or a['start_date'] < date_end
+    ]
