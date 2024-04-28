@@ -4,6 +4,7 @@ from typing import Dict
 from typing import Iterable
 from typing import List
 from warnings import warn
+from datetime import date
 
 from .data import HashTag
 from .data import Result
@@ -12,13 +13,16 @@ from .data import Rules
 from .data import Usage
 
 
-def apply_rules(rules: Rules, activities: List[Dict]) -> Result:
+def apply_rules(rules: Rules, activities: List[Dict], date_start: date, date_end: date) -> Result:
     rules_sorted = sorted(rules.rules, key=lambda r: r.since)
     activities_sorted = sorted(activities, key=lambda a: a['start_date'])
 
     # Determine the effective combinations of rules for all time points where rules change.
     # Rules effective at time T are obtained by combining all rules up to and including time T.
     effective_rules = list(accumulate(chain([Rule()], rules_sorted)))
+
+    # If a date boundary is defined, filter the activity list
+    activities_sorted = filter(lambda a: (a['start_date'].date() > date_start) & (a['start_date'].date() < date_end), activities_sorted)
 
     # Determine the effective rules for each activity by merging the two sorted series,
     # and tally up usage.
