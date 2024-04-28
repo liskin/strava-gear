@@ -22,7 +22,10 @@ def apply_rules(rules: Rules, activities: List[Dict], date_start: date, date_end
     effective_rules = list(accumulate(chain([Rule()], rules_sorted)))
 
     # If a date boundary is defined, filter the activity list
-    activities_sorted = filter(lambda a: (a['start_date'].date() > date_start) & (a['start_date'].date() < date_end), activities_sorted)
+    activities_sorted = filter(
+        lambda a: (a['start_date'].date() > date_start) & (a['start_date'].date() < date_end),
+        activities_sorted
+    )
 
     # Determine the effective rules for each activity by merging the two sorted series,
     # and tally up usage.

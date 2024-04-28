@@ -60,11 +60,11 @@ from .report import reports
     callback=lambda _ctx, _param, v: Units[v.upper()],  # TODO: drop when Python 3.11 is the oldest supported
     help="Show data in metric or imperial")
 @click.option(
-    '--date-start', type=click.DateTime(formats=["%Y-%m-%d","%d-%m-%Y"]),
+    '--date-start', type=click.DateTime(formats=["%Y-%m-%d", "%d-%m-%Y"]),
     default=str("1970-01-01"),
     help="Start from date")
 @click.option(
-    '--date-end', type=click.DateTime(formats=["%Y-%m-%d","%d-%m-%Y"]),
+    '--date-end', type=click.DateTime(formats=["%Y-%m-%d", "%d-%m-%Y"]),
     default=str("2100-01-01"),
     help="Up to date")
 def cli(
@@ -85,8 +85,8 @@ def cli(
         aliases, activities = read_input_csv(csv)
     else:
         aliases, activities = read_strava_offline(strava_database)
-    date_start=date_start.date()
-    date_end=date_end.date()
+    date_start = date_start.date()
+    date_end = date_end.date()
     rules = read_rules(rules_input, aliases=aliases)
     res = apply_rules(rules, activities, date_start, date_end)
     reports[report](
