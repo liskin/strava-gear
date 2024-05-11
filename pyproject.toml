@@ -41,7 +41,7 @@ dev = [
     "flake8 >= 3.7",
     "isort >= 5.0",
     "mypy >= 0.900",
-    "prysk == 0.17.0",
+    "prysk >= 0.20.0",
     "twine",
     "types-PyYAML",
     "types-python-dateutil",
