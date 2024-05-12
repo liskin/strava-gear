@@ -1,7 +1,7 @@
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 from typing import TextIO
-from datetime import datetime
 
 import click
 import platformdirs
@@ -11,10 +11,10 @@ from .core import warn_unknown_bikes
 from .input.activities import essential_columns
 from .input.activities import read_input_csv
 from .input.activities import read_strava_offline
+from .input.date import parse_datetime
 from .input.rules import read_rules
 from .report import Units
 from .report import reports
-from .input.date import parse_datetime
 
 
 @click.command(context_settings={'max_content_width': 120})

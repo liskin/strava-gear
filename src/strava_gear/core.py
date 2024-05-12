@@ -1,3 +1,4 @@
+from datetime import datetime
 from itertools import accumulate
 from itertools import chain
 from typing import Dict
@@ -5,7 +6,6 @@ from typing import Iterable
 from typing import List
 from typing import Optional
 from warnings import warn
-from datetime import datetime
 
 from .data import HashTag
 from .data import Result
