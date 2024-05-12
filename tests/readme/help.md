@@ -22,4 +22,7 @@
                                       Show first/last usage of components  [default: show-first-last]
       --show-vert / --hide-vert       Show vertical (elevation gain)  [default: hide-vert]
       --units [metric|imperial]       Show data in metric or imperial  [default: metric]
+      --date-start [%Y-%m-%d|%d-%m-%Y]
+                                      Start from date
+      --date-end [%Y-%m-%d|%d-%m-%Y]  Up to date
       --help                          Show this message and exit.

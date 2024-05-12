@@ -3,8 +3,9 @@ from itertools import chain
 from typing import Dict
 from typing import Iterable
 from typing import List
+from typing import Optional
 from warnings import warn
-from datetime import date
+from datetime import datetime
 
 from .data import HashTag
 from .data import Result
@@ -13,7 +14,9 @@ from .data import Rules
 from .data import Usage
 
 
-def apply_rules(rules: Rules, activities: List[Dict], date_start: date, date_end: date) -> Result:
+def apply_rules(rules: Rules, activities: List[Dict],
+                date_start: Optional[datetime],
+                date_end: Optional[datetime]) -> Result:
     rules_sorted = sorted(rules.rules, key=lambda r: r.since)
     activities_sorted = sorted(activities, key=lambda a: a['start_date'])
 
@@ -22,10 +25,10 @@ def apply_rules(rules: Rules, activities: List[Dict], date_start: date, date_end
     effective_rules = list(accumulate(chain([Rule()], rules_sorted)))
 
     # If a date boundary is defined, filter the activity list
-    activities_sorted = filter(
-        lambda a: (a['start_date'].date() > date_start) & (a['start_date'].date() < date_end),
+    activities_sorted = list(filter(
+        lambda a: (a['start_date'] > date_start) & (a['start_date'] < date_end),
         activities_sorted
-    )
+    ))
 
     # Determine the effective rules for each activity by merging the two sorted series,
     # and tally up usage.

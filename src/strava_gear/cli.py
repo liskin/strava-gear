@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Optional
 from typing import TextIO
-from datetime import date
+from datetime import datetime
 
 import click
 import platformdirs
@@ -14,6 +14,7 @@ from .input.activities import read_strava_offline
 from .input.rules import read_rules
 from .report import Units
 from .report import reports
+from .input.date import parse_datetime
 
 
 @click.command(context_settings={'max_content_width': 120})
@@ -78,15 +79,15 @@ def cli(
     show_first_last: bool,
     show_vert: bool,
     units: Units,
-    date_start: date,
-    date_end: date
+    date_start: Optional[datetime],
+    date_end: Optional[datetime]
 ):
     if csv:
         aliases, activities = read_input_csv(csv)
     else:
         aliases, activities = read_strava_offline(strava_database)
-    date_start = date_start.date()
-    date_end = date_end.date()
+    date_start = parse_datetime(date_start)
+    date_end = parse_datetime(date_end)
     rules = read_rules(rules_input, aliases=aliases)
     res = apply_rules(rules, activities, date_start, date_end)
     reports[report](
