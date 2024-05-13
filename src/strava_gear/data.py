@@ -32,7 +32,6 @@ Seconds = NewType('Seconds', float)
 
 ComponentMap = Dict[ComponentRole, ComponentId]
 Mapping = Dict[T, ComponentMap]
-ComponentAssignment = Tuple[BikeId, ComponentRole]
 
 
 @total_ordering
@@ -82,6 +81,12 @@ class FirstLast:
             return f"{self.first.date()} … {self.last.date()}"
 
 
+@dataclass(order=True)
+class ComponentAssignment:
+    bike: BikeId
+    role: ComponentRole
+
+
 @dataclass(frozen=True)
 class Component:
     ident: ComponentId
@@ -128,7 +133,7 @@ class Rule:
         return replace(other, bikes=bikes, hashtags=hashtags)
 
     def component_assignments(self) -> Dict[ComponentId, ComponentAssignment]:
-        return {c: (b, t) for b, m in self.bikes.items() for t, c in m.items()}
+        return {c: ComponentAssignment(b, t) for b, m in self.bikes.items() for t, c in m.items()}
 
     def all_component_ids(self) -> Iterator[ComponentId]:
         """Return all component ids mentioned in this rule."""

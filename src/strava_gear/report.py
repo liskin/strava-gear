@@ -81,16 +81,13 @@ def report_bikes(res: Result) -> Iterator[Dict]:
 
     def sort_key(c: Component):
         assert c.assignment
-        b, t = c.assignment
-
-        return bikes_firstlasts[b], b, t
+        return bikes_firstlasts[c.assignment.bike], c.assignment
 
     for c in sorted((c for c in res.components if c.assignment), key=sort_key):
         assert c.assignment
-        b, t = c.assignment
         yield {
-            "bike": res.bike_names.get(b, b),
-            "role": t,
+            "bike": res.bike_names.get(c.assignment.bike, c.assignment.bike),
+            "role": c.assignment.role,
             "id": c.ident,
             "name": c.name,
             "km": c.distance / 1000,
@@ -106,8 +103,7 @@ def bikes_firstlast(res: Result) -> Dict[BikeId, FirstLast]:
     fl: Dict[BikeId, FirstLast] = defaultdict(FirstLast)
     for c in res.components:
         if c.assignment:
-            b, _ = c.assignment
-            fl[b] += c.firstlast
+            fl[c.assignment.bike] += c.firstlast
     return fl
 
 
