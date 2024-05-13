@@ -96,11 +96,11 @@ def cli(
     date_end: Optional[datetime]
 ):
     if csv:
-        aliases, activities = read_input_csv(csv)
+        input = read_input_csv(csv)
     else:
-        aliases, activities = read_strava_offline(strava_database)
-    activities = activities_in_range(activities, date_start=date_start, date_end=date_end)
-    rules = read_rules(rules_input, aliases=aliases)
+        input = read_strava_offline(strava_database)
+    activities = activities_in_range(input.activities, date_start=date_start, date_end=date_end)
+    rules = read_rules(rules_input, aliases=input.aliases)
     res = apply_rules(rules, activities)
     reports[report](
         res,

@@ -34,6 +34,12 @@ ComponentMap = Dict[ComponentRole, ComponentId]
 Mapping = Dict[T, ComponentMap]
 
 
+@dataclass(frozen=True)
+class Input:
+    activities: List[Dict]
+    aliases: Dict[BikeName, BikeId] = field(default_factory=dict)
+
+
 @total_ordering
 @dataclass(frozen=True)
 class FirstLast:

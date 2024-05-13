@@ -4,11 +4,11 @@ import sqlite3
 from typing import Dict
 from typing import List
 from typing import TextIO
-from typing import Tuple
 from typing import Union
 
 from ..data import BikeId
 from ..data import BikeName
+from ..data import Input
 from .date import parse_datetime
 
 essential_columns = {
@@ -21,7 +21,7 @@ essential_columns = {
 }
 
 
-def read_input_csv(inp: TextIO) -> Tuple[Dict[BikeName, BikeId], List[Dict]]:
+def read_input_csv(inp: TextIO) -> Input:
     """
     Load activities from CSV generated from this command:
 
@@ -42,10 +42,10 @@ def read_input_csv(inp: TextIO) -> Tuple[Dict[BikeName, BikeId], List[Dict]]:
             'start_date': parse_datetime(r['start_date']),
         })
 
-    return {}, activities
+    return Input(activities=activities)
 
 
-def read_strava_offline(db_filename: Union[str, PathLike]) -> Tuple[Dict[BikeName, BikeId], List[Dict]]:
+def read_strava_offline(db_filename: Union[str, PathLike]) -> Input:
     """
     Load activities from strava-offline database.
     """
@@ -62,4 +62,8 @@ def read_strava_offline(db_filename: Union[str, PathLike]) -> Tuple[Dict[BikeNam
             assert essential_columns <= set(r.keys())
             activities.append({**r, 'start_date': parse_datetime(r['start_date'])})
 
-        return aliases, activities
+        return Input(
+            activities=activities,
+            aliases=aliases,
+            bike_retired=bike_retired
+        )
