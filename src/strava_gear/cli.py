@@ -72,6 +72,9 @@ class DateTimeParam(click.ParamType):
     '--show-vert/--hide-vert', default=False, show_default=True,
     help="Show vertical (elevation gain)")
 @click.option(
+    '--show-retired/--hide-retired', default=False, show_default=True,
+    help="Show retired bikes (on Strava)")
+@click.option(
     '--units', type=click.Choice([u.name.lower() for u in Units]), default=Units.METRIC.name.lower(), show_default=True,
     callback=lambda _ctx, _param, v: Units[v.upper()],  # TODO: drop when Python 3.11 is the oldest supported
     help="Show data in metric or imperial")
@@ -91,6 +94,7 @@ def cli(
     show_name: bool,
     show_first_last: bool,
     show_vert: bool,
+    show_retired: bool,
     units: Units,
     date_start: Optional[datetime],
     date_end: Optional[datetime]
@@ -108,6 +112,7 @@ def cli(
         show_name=show_name,
         show_first_last=show_first_last,
         show_vert=show_vert,
+        show_bike=lambda b: show_retired or not input.bike_retired(b),
         units=units,
     )
     warn_unknown_bikes(rules, activities)

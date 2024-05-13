@@ -21,6 +21,8 @@
       --show-first-last / --hide-first-last
                                       Show first/last usage of components  [default: show-first-last]
       --show-vert / --hide-vert       Show vertical (elevation gain)  [default: hide-vert]
+      --show-retired / --hide-retired
+                                      Show retired bikes (on Strava)  [default: hide-retired]
       --units [metric|imperial]       Show data in metric or imperial  [default: metric]
       --date-start ISO8601            Filter activities: start at or after the specified date(time)
       --date-end ISO8601              Filter activities: start before the specified date(time)

@@ -8,6 +8,7 @@ from datetime import datetime
 from datetime import timezone
 from functools import total_ordering
 from itertools import chain
+from typing import Callable
 from typing import Dict
 from typing import Iterable
 from typing import Iterator
@@ -38,6 +39,7 @@ Mapping = Dict[T, ComponentMap]
 class Input:
     activities: List[Dict]
     aliases: Dict[BikeName, BikeId] = field(default_factory=dict)
+    bike_retired: Callable[[BikeId], bool] = lambda _: False
 
 
 @total_ordering

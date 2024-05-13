@@ -3,6 +3,7 @@ import csv
 from enum import Enum
 from enum import auto
 from functools import partial
+from typing import Callable
 from typing import Dict
 from typing import Final
 from typing import Iterator
@@ -31,6 +32,7 @@ def report(
     show_name: bool,
     show_first_last: bool,
     show_vert: bool,
+    show_bike: Callable[[BikeId], bool],
     units: Units,
 ):
     def cols(d: Dict) -> Dict:
@@ -50,7 +52,7 @@ def report(
                 del d["vert m"]
         return d
 
-    table = [cols(d) for d in f(res)]
+    table = [cols(d) for d in f(res, show_bike=show_bike)]
     if not table:
         return
 
@@ -62,7 +64,7 @@ def report(
         print(tabulate(table, headers="keys", floatfmt=".1f", tablefmt=tablefmt), file=output)
 
 
-def report_components(res: Result) -> Iterator[Dict]:
+def report_components(res: Result, **_kwargs) -> Iterator[Dict]:
     for c in sorted(res.components, key=lambda c: (c.firstlast, c.ident,)):
         yield {
             "id": c.ident,
@@ -76,14 +78,21 @@ def report_components(res: Result) -> Iterator[Dict]:
         }
 
 
-def report_bikes(res: Result) -> Iterator[Dict]:
+def report_bikes(res: Result, show_bike: Callable[[BikeId], bool]) -> Iterator[Dict]:
     bikes_firstlasts = bikes_firstlast(res)
 
     def sort_key(c: Component):
         assert c.assignment
         return bikes_firstlasts[c.assignment.bike], c.assignment
 
-    for c in sorted((c for c in res.components if c.assignment), key=sort_key):
+    for c in sorted((
+            c
+            for c in res.components
+            if c.assignment
+            if show_bike(c.assignment.bike)
+        ),
+        key=sort_key
+    ):
         assert c.assignment
         yield {
             "bike": res.bike_names.get(c.assignment.bike, c.assignment.bike),

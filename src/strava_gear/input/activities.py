@@ -62,6 +62,13 @@ def read_strava_offline(db_filename: Union[str, PathLike]) -> Input:
             assert essential_columns <= set(r.keys())
             activities.append({**r, 'start_date': parse_datetime(r['start_date'])})
 
+        # Strava doesn't return any retired bikes in /api/v3/athlete,
+        # which is where strava-offline gets its list of bikes from
+        # (if it ever does, there's an (undocumented) "retired" field
+        # in the SummaryGear record)
+        known_bike_ids = set(aliases.values())
+        bike_retired = lambda b: b not in known_bike_ids  # noqa: E731
+
         return Input(
             activities=activities,
             aliases=aliases,
