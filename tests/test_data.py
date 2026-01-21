@@ -44,9 +44,13 @@ def test_rule():
     assert Rule(hashtags={'#b1': {'c': 'c1'}}) + Rule(hashtags={'#b1': {'c': 'c2'}}) == \
         Rule(hashtags={'#b1': {'c': 'c2'}})
 
-    # moving a component from one bike to another…
+    # moving a component from one bike to another (different rules)…
     assert Rule(bikes={'b1': {'c': 'c1', 'd': 'd1'}}) + Rule(bikes={'b2': {'c': 'c1'}}) == \
         Rule(bikes={'b1': {'d': 'd1'}, 'b2': {'c': 'c1'}})
+
+    # sharing a component across multiple bikes (same rule) - component stays on both
+    assert Rule(bikes={'b1': {'c': 'c1', 'd': 'd1'}}) + Rule(bikes={'b1': {'c': 'c1'}, 'b2': {'c': 'c1'}}) == \
+        Rule(bikes={'b1': {'c': 'c1', 'd': 'd1'}, 'b2': {'c': 'c1'}})
 
     # … hashtags aren't exclusive though
     assert Rule(hashtags={'#b1': {'c': 'c1', 'd': 'd1'}}) + Rule(hashtags={'#b2': {'c': 'c1'}}) == \
