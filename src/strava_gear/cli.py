@@ -28,7 +28,7 @@ class DateTimeParam(click.ParamType):
         except ValueError as e:
             self.fail(str(e) or "Could not parse datetime")
 
-    def get_metavar(self, _param):
+    def get_metavar(self, param, ctx=None):
         return "ISO8601"
 
 
