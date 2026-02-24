@@ -20,17 +20,17 @@ jobs:
       fail-fast: false
       matrix:
         python-version:
-          - '3.8'
-          - '3.9'
           - '3.10'
           - '3.11'
           - '3.12'
+          - '3.13'
+          - '3.14'
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Set up Python ${{ matrix.python-version }}
         id: setup-python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
       - name: Get pip cache dir
@@ -38,7 +38,7 @@ jobs:
         run: |
           echo "dir=$(pip cache dir)" >> $GITHUB_OUTPUT
       - name: Persistent Github pip cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ${{ steps.pip-cache.outputs.dir }}
           key: pip-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml', 'setup.cfg', 'setup.py', 'Makefile') }}
@@ -46,7 +46,7 @@ jobs:
             pip-${{ runner.os }}-${{ matrix.python-version }}-
             pip-${{ runner.os }}-
       - name: Persistent Github venv cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .venv/
           key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('pyproject.toml', 'setup.cfg', 'setup.py', 'Makefile') }}
@@ -102,7 +102,7 @@ jobs:
           set -ex
           apt update
           apt install -y git
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install dependencies via apt
         env:
           DEBIAN_FRONTEND: noninteractive
@@ -116,23 +116,6 @@ jobs:
           apt-cache --generate pkgnames \
             | grep --line-regexp --fixed-strings "$deps" \
             | xargs apt install -y
-      - name: Workaround for https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=1057968
-        env:
-          DEBIAN_FRONTEND: noninteractive
-        shell: bash
-        run: |
-          set -ex
-          grep "Suites: noble" /etc/apt/sources.list.d/ubuntu.sources || exit 0
-          apt install -y debian-archive-keyring
-          ln -s /usr/share/keyrings/debian-archive-keyring.gpg /etc/apt/trusted.gpg.d/
-          python3_pycodestyle=$(dpkg-query --showformat='${Version}\n' --show python3-pycodestyle)
-          python3_flake8=$(dpkg-query --showformat='${Version}\n' --show python3-flake8)
-          if [[ $python3_pycodestyle == 2.11.* && $python3_flake8 == 5.* ]]; then
-            echo 'deb https://deb.debian.org/debian unstable main' >/etc/apt/sources.list.d/debian-unstable.list
-            echo 'APT::Default-Release "noble";' >/etc/apt/apt.conf.d/debian-release
-            apt update
-            apt install -t unstable -y python3-flake8
-          fi
       - name: Workaround for https://github.com/actions/checkout/issues/1169
         run: git config --global --add safe.directory "$PWD"
       - name: Install remaining dependencies
