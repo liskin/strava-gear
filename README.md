@@ -33,26 +33,34 @@ Planned, not yet implemented features:
 [Strava]: https://strava.com/
 [Strava My Gear]: https://support.strava.com/hc/en-us/articles/216918727-Adding-Gear-to-your-activities-on-Strava
 [git]: https://git-scm.com/
-[pipx]: https://github.com/pypa/pipx
 
 ## Installation
 
+Using [uv][]:
+
+```console
+$ uv tool install "strava-gear[strava]"
+```
+
 Using [pipx][]:
 
-```
-pipx ensurepath
-pipx install "strava-gear[strava]"
+```console
+$ pipx ensurepath
+$ pipx install "strava-gear[strava]"
 ```
 
-Alternatively, if you don't need the isolated virtualenv that [pipx][]
-provides, feel free to just:
+From a git clone:
 
-```
-pip install "strava-gear[strava]"
+```console
+$ git clone https://github.com/liskin/strava-gear
+$ uv tool install "./strava-gear[strava]"
 ```
 
 If you've already installed [strava-offline][] and use it separately, you can
 omit the `[strava]` bit to avoid installing strava-offline twice.
+
+[uv]: https://docs.astral.sh/uv/
+[pipx]: https://github.com/pypa/pipx
 
 ## Setup and usage
 
