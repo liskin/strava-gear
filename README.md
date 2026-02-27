@@ -12,27 +12,27 @@ strava-gear is a …
 
 ## Installation
 
+Using [uv][]:
+
+```console
+$ uv tool install strava-gear
+```
+
 Using [pipx][]:
 
-```
-pipx ensurepath
-pipx install strava-gear
-```
-
-To keep a local git clone around:
-
-```
-git clone https://github.com/liskin/strava-gear
-make -C strava-gear pipx
+```console
+$ pipx ensurepath
+$ pipx install strava-gear
 ```
 
-Alternatively, if you don't need the isolated virtualenv that [pipx][]
-provides, feel free to just:
+From a git clone:
 
-```
-pip install strava-gear
+```console
+$ git clone https://github.com/liskin/strava-gear
+$ uv tool install ./strava-gear
 ```
 
+[uv]: https://docs.astral.sh/uv/
 [pipx]: https://github.com/pypa/pipx
 
 ## Usage
