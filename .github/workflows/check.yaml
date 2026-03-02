@@ -128,9 +128,6 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
-          # disable cache, distro detection fails on debian unstable/testing
-          # https://github.com/astral-sh/setup-uv/issues/773
-          enable-cache: 'false'
           add-problem-matchers: 'false'
       - name: Install remaining dependencies
         run: make venv-system-site-packages
