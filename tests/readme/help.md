@@ -1,3 +1,7 @@
+<!--
+    $ . "$TESTDIR"/../.xdg-user.sh
+-->
+
     $ strava-gear --help
     Usage: strava-gear [OPTIONS]
     
