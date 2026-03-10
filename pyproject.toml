@@ -25,8 +25,9 @@ classifiers = [ # https://pypi.org/classifiers/
 ]
 requires-python = ">= 3.10"
 dependencies = [
-    "PyYAML",
-    "click ~= 8.0",
+    "PyYAML >= 5.1",
+    "click >= 8.1.1",
+    "click-config-file >= 0.6.0",
     "jsonschema",
     "platformdirs >= 2.1",
     "python-dateutil >= 2.7",
@@ -40,12 +41,12 @@ strava = [
 
 [dependency-groups]
 dev = [
-    "flake8 >= 3.7",
-    "isort >= 5.0",
-    "mypy >= 0.900",
+    "flake8 >= 6.1",
+    "isort >= 5.1",
+    "mypy >= 1.0",
     "prysk >= 0.20.0",
-    "pytest",
-    "types-PyYAML",
+    "pytest >= 7.0",
+    "types-PyYAML >= 5.4.0",
     "types-python-dateutil",
     "types-tabulate",
 ]
@@ -65,7 +66,7 @@ strava-gear-sync = "strava_gear.cli_strava_offline:cli_sqlite [strava]"
 [tool.gha-check-distro]
 dependencies-apt = [
     "jq",
-    "make",
+    "just",
     "python3-bottle",
     "python3-click",
     "python3-click-option-group",
@@ -79,6 +80,7 @@ dependencies-apt = [
     "python3-platformdirs",
     "python3-pytest",
     "python3-requests-oauthlib",
+    "python3-rich",
     "python3-tabulate",
     "python3-typeshed",
     "python3-venv",

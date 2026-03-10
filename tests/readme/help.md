@@ -1,4 +1,5 @@
 <!--
+    $ . "$TESTDIR"/../.xdg-user.sh
     $ export COLUMNS=120
 -->
 
