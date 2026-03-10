@@ -2,7 +2,7 @@ from io import StringIO
 import textwrap
 
 from jsonschema.exceptions import ValidationError  # type: ignore [import]
-import pytest  # type: ignore [import]
+import pytest
 
 from strava_gear.data import Component
 from strava_gear.data import Rule

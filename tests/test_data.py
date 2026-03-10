@@ -1,4 +1,4 @@
-import pytest  # type: ignore [import]
+import pytest
 
 from strava_gear.data import Rule
 from strava_gear.input.date import parse_datetime
