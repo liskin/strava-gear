@@ -133,10 +133,12 @@ def check_component_duplicities(bikes: Mapping[BikeId] = {}, hashtags: Mapping[H
             if c is not None and count > 1:
                 duplicates.add(c)
 
-    # no component may be assigned to multiple roles or bikes
-    for c, count in Counter(c for cm in bikes.values() for c in cm.values()).items():
-        if c is not None and count > 1:
-            duplicates.add(c)
+    # no component may be assigned to multiple roles on the SAME bike
+    # (cross-bike assignment is now allowed for shared components)
+    for bike_id, cm in bikes.items():
+        for c, count in Counter(cm.values()).items():
+            if c is not None and count > 1:
+                duplicates.add(c)
 
     return duplicates
 
