@@ -28,10 +28,10 @@ dependencies = [
     "PyYAML >= 5.1",
     "click >= 8.1.1",
     "click-config-file >= 0.6.0",
-    "jsonschema",
+    "jsonschema >= 4.10",
     "platformdirs >= 2.1",
     "python-dateutil >= 2.7",
-    "tabulate",
+    "tabulate >= 0.8.9",
 ]
 
 [project.optional-dependencies]
@@ -47,8 +47,8 @@ dev = [
     "prysk >= 0.20.0",
     "pytest >= 7.0",
     "types-PyYAML >= 5.4.0",
-    "types-python-dateutil",
-    "types-tabulate",
+    "types-python-dateutil >= 2.7",
+    "types-tabulate >= 0.8.9",
 ]
 
 [project.urls]
