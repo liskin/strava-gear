@@ -11,7 +11,6 @@ from typing import Iterator
 from tabulate import tabulate
 
 from .data import BikeId
-from .data import Component
 from .data import FirstLast
 from .data import Result
 
@@ -81,22 +80,22 @@ def report_components(res: Result, **_kwargs) -> Iterator[Dict]:
 def report_bikes(res: Result, show_bike: Callable[[BikeId], bool]) -> Iterator[Dict]:
     bikes_firstlasts = bikes_firstlast(res)
 
-    def sort_key(c: Component):
-        assert c.assignment
-        return bikes_firstlasts[c.assignment.bike], c.assignment
+    def sort_key(item: tuple):
+        c, assignment = item
+        return bikes_firstlasts[assignment.bike], assignment
 
-    for c in sorted((
-            c
-            for c in res.components
-            if c.assignment
-            if show_bike(c.assignment.bike)
-        ),
-        key=sort_key
-    ):
-        assert c.assignment
+    # Generate (component, assignment) pairs for all assignments
+    items = [
+        (c, assignment)
+        for c in res.components
+        for assignment in c.assignments
+        if show_bike(assignment.bike)
+    ]
+
+    for c, assignment in sorted(items, key=sort_key):
         yield {
-            "bike": res.bike_names.get(c.assignment.bike, c.assignment.bike),
-            "role": c.assignment.role,
+            "bike": res.bike_names.get(assignment.bike, assignment.bike),
+            "role": assignment.role,
             "id": c.ident,
             "name": c.name,
             "km": c.distance / 1000,
@@ -111,8 +110,8 @@ def report_bikes(res: Result, show_bike: Callable[[BikeId], bool]) -> Iterator[D
 def bikes_firstlast(res: Result) -> Dict[BikeId, FirstLast]:
     fl: Dict[BikeId, FirstLast] = defaultdict(FirstLast)
     for c in res.components:
-        if c.assignment:
-            fl[c.assignment.bike] += c.firstlast
+        for assignment in c.assignments:
+            fl[assignment.bike] += c.firstlast
     return fl
 
 

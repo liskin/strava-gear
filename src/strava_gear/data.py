@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import Counter
 from collections import defaultdict
 from dataclasses import dataclass
 from dataclasses import field
@@ -103,7 +104,7 @@ class Component:
     elevation_gain: Meters = Meters(0.0)
     time: Seconds = Seconds(0.0)
     firstlast: FirstLast = FirstLast()
-    assignment: Optional[ComponentAssignment] = None
+    assignments: List[ComponentAssignment] = field(default_factory=list)
 
     def add_usage(self, usage: Usage) -> Component:
         return replace(
@@ -113,8 +114,8 @@ class Component:
             time=Seconds(self.time + usage.times.get(self.ident, 0)),
             firstlast=self.firstlast + usage.firstlasts.get(self.ident, FirstLast()))
 
-    def assign(self, assignment: Optional[ComponentAssignment]) -> Component:
-        return replace(self, assignment=assignment)
+    def assign(self, assignments: List[ComponentAssignment]) -> Component:
+        return replace(self, assignments=assignments)
 
 
 @dataclass(frozen=True)
@@ -128,20 +129,32 @@ class Rule:
         Combine two rules. The second rule's since must be equal or later than the first.
         Component mappings in the second rule then override those in the first.
         Additionally, components newly assigned to another bike are automatically removed
-        from the old one.
+        from the old one, unless they appear on multiple bikes in the new rule (shared).
         """
         if not isinstance(other, Rule):
             return NotImplemented
         if other.since < self.since:
             return NotImplemented
 
-        other_components = {c for m in other.bikes.values() for c in m.values()}
-        bikes = prune_mapping(update_mappings(filter_mapping(self.bikes, other_components), other.bikes))
+        # Find components that appear on multiple bikes in the new rule (shared)
+        other_component_counts = Counter(c for m in other.bikes.values() for c in m.values() if c)
+        shared_in_other = {c for c, count in other_component_counts.items() if count > 1}
+
+        # Only filter out non-shared components from old bikes
+        other_components = set(other_component_counts.keys())
+        components_to_filter = other_components - shared_in_other
+
+        bikes = prune_mapping(update_mappings(filter_mapping(self.bikes, components_to_filter), other.bikes))
         hashtags = prune_mapping(update_mappings(self.hashtags, other.hashtags))
         return replace(other, bikes=bikes, hashtags=hashtags)
 
-    def component_assignments(self) -> Dict[ComponentId, ComponentAssignment]:
-        return {c: ComponentAssignment(b, t) for b, m in self.bikes.items() for t, c in m.items()}
+    def component_assignments(self) -> Dict[ComponentId, List[ComponentAssignment]]:
+        result: Dict[ComponentId, List[ComponentAssignment]] = defaultdict(list)
+        for bike_id, component_map in self.bikes.items():
+            for role, component_id in component_map.items():
+                if component_id is not None:
+                    result[component_id].append(ComponentAssignment(bike_id, role))
+        return dict(result)
 
     def all_component_ids(self) -> Iterator[ComponentId]:
         """Return all component ids mentioned in this rule."""

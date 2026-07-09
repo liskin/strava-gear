@@ -136,4 +136,5 @@ def test_check_component_duplicities():
 
     assert check_component_duplicities(bikes={'b1': {'r1': 'c1'}}) == set([])
     assert check_component_duplicities(bikes={'b1': {'r1': 'c1', 'r2': 'c1'}}) == set(['c1'])
-    assert check_component_duplicities(bikes={'b1': {'r1': 'c1'}, 'b2': {'r1': 'c1'}}) == set(['c1'])
+    # same component on multiple bikes is now allowed (shared components)
+    assert check_component_duplicities(bikes={'b1': {'r1': 'c1'}, 'b2': {'r1': 'c1'}}) == set([])

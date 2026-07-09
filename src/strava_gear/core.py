@@ -29,7 +29,7 @@ def apply_rules(rules: Rules, activities: List[Dict]) -> Result:
     # Fill computed data (usage, current assignment) into components.
     component_assignments = effective_rules[-1].component_assignments()
     components = [
-        c.add_usage(usage).assign(component_assignments.get(c.ident, None))
+        c.add_usage(usage).assign(component_assignments.get(c.ident, []))
         for c in rules.components
     ]
 
