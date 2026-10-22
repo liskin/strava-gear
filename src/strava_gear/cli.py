@@ -75,8 +75,7 @@ class DateTimeParam(click.ParamType):
     '--show-retired/--hide-retired', default=False, show_default=True,
     help="Show retired bikes (on Strava)")
 @click.option(
-    '--units', type=click.Choice([u.name.lower() for u in Units]), default=Units.METRIC.name.lower(), show_default=True,
-    callback=lambda _ctx, _param, v: Units[v.upper()],  # TODO: drop when Python 3.11 is the oldest supported
+    '--units', type=click.Choice(Units, case_sensitive=False), default=Units.METRIC.name.lower(), show_default=True,
     help="Show data in metric or imperial")
 @click.option(
     '--date-start', type=DateTimeParam(),

@@ -26,7 +26,7 @@ classifiers = [ # https://pypi.org/classifiers/
 requires-python = ">= 3.11"
 dependencies = [
     "PyYAML >= 5.1",
-    "click >= 8.1.1",
+    "click >= 8.2.0",
     "click-config-file >= 0.6.0",
     "jsonschema >= 4.10",
     "platformdirs >= 2.1",
