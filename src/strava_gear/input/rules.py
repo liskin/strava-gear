@@ -157,5 +157,10 @@ def process_rules(c: Dict, aliases: Dict[BikeName, BikeId]) -> Rules:
 
 def read_rules(inp, aliases: Dict[BikeName, BikeId] = {}) -> Rules:
     c = yaml.safe_load(inp)
+
+    # empty rules file parses as None
+    if c is None:
+        c = {}
+
     jsonschema.validate(c, config_schema, format_checker=config_format_checker)
     return process_rules(c, aliases)

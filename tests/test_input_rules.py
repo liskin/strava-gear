@@ -15,6 +15,11 @@ def rd(yaml, **kwargs):
     return read_rules(StringIO(textwrap.dedent(yaml.strip("\n"))), **kwargs)
 
 
+def test_empty():
+    assert rd("") == Rules(bike_names={}, components=[], rules=[])
+    assert rd("   \n  \n") == Rules(bike_names={}, components=[], rules=[])
+
+
 def test_minimal():
     assert rd("rules: [{}]") == Rules(bike_names={}, components=[], rules=[Rule()])
 
