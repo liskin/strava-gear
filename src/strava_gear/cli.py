@@ -101,7 +101,13 @@ def cli(
     if csv:
         input = read_input_csv(csv)
     else:
-        input = read_strava_offline(strava_database)
+        if strava_database.exists():
+            input = read_strava_offline(strava_database)
+        else:
+            raise click.ClickException(
+                f"Strava database not found: {strava_database} "
+                "(run strava-gear-sync first, or use --csv or --strava-database with an existing file)"
+            )
     activities = activities_in_range(input.activities, date_start=date_start, date_end=date_end)
     rules = read_rules(rules_input, aliases=input.aliases)
     res = apply_rules(rules, activities)
