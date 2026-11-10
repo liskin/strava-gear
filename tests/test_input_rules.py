@@ -127,6 +127,11 @@ def test_validation_fails():
     # TODO: more tests for validation
 
 
+def test_empty_rules_file():
+    assert rd("") == Rules(bike_names={}, components=[], rules=[])
+    assert rd("   \n  \n") == Rules(bike_names={}, components=[], rules=[])
+
+
 def test_check_component_duplicities():
     assert check_component_duplicities() == set()
 
